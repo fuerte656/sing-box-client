@@ -1,7 +1,7 @@
 {
   "$schema": "https://raw.githubusercontent.com/neutralinojs/neutralinojs/main/schemas/neutralino.config.schema.json",
   "applicationId": "io.github.singboxclient",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "applicationName": "sing-box client",
   "applicationIcon": "public/icons/app.png",
   "description": "sing-box client",
