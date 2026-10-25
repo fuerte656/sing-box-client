@@ -27,6 +27,7 @@ export interface ConfirmDialogData {
   `,
   styles: `
     .message { white-space: pre-wrap; word-break: break-word; margin: 0; }
+    [mat-dialog-title] { word-break: break-word; }
     .destructive { --mat-button-filled-container-color: var(--mat-sys-error); --mat-button-filled-label-text-color: var(--mat-sys-on-error); }
   `,
 })

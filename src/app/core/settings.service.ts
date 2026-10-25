@@ -35,6 +35,12 @@ export interface AppSettings {
   startMinimized: boolean;
   /** Show a desktop notification for service alerts while the window is hidden. */
   notifications: boolean;
+  /** Notify when a Taildrop file has been received. */
+  taildropNotifications: boolean;
+  /** Save received Taildrop files into taildropFolder automatically (and clear them from the inbox). */
+  taildropAutoSave: boolean;
+  /** Where received files are saved; empty means the OS Downloads folder. */
+  taildropFolder: string;
   /** Mirrors SFA's system HTTP proxy toggle: applied to inbounds that declare set_system_proxy. */
   systemProxyEnabled: boolean;
   /** Port used for the injected Clash API when the profile does not define one. */
@@ -58,6 +64,9 @@ export class SettingsService extends BaseSettings<AppSettings> {
     closeToTray: true,
     startMinimized: false,
     notifications: true,
+    taildropNotifications: true,
+    taildropAutoSave: true,
+    taildropFolder: '',
     systemProxyEnabled: true,
     clashApiPort: 9090,
     apiServicePort: 9091,

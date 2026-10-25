@@ -2,6 +2,7 @@ import { Injectable, inject } from '@angular/core';
 import { app, events } from '@neutralinojs/lib';
 import { BoxService } from './box.service';
 import { CoreBinaryService } from './core-binary.service';
+import { TaildropService } from './daemon/taildrop.service';
 import { InstanceService } from './instance.service';
 import { NativeService } from './native.service';
 import { ProfileService } from './profile.service';
@@ -20,6 +21,7 @@ export class AppLifecycleService {
   private readonly tray = inject(TrayService);
   private readonly window = inject(WindowService);
   private readonly instance = inject(InstanceService);
+  private readonly taildrop = inject(TaildropService);
   private quitting = false;
 
   async initialize(): Promise<void> {
@@ -34,6 +36,7 @@ export class AppLifecycleService {
 
       await events.on('windowClose', () => void this.onWindowClose());
       await this.tray.start(() => this.quit());
+      this.taildrop.start();
 
       if (this.settings.get('autoStart') && this.core.version() && this.profiles.selected()) {
         void this.box.start();

@@ -59,3 +59,40 @@
   color: var(--mat-sys-on-error-container);
   font: var(--mat-sys-body-small);
 }
+
+.receiving {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 0 12px 8px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: var(--mat-sys-secondary-container);
+  color: var(--mat-sys-on-secondary-container);
+  text-decoration: none;
+}
+
+.receiving-text {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font: var(--mat-sys-label-large);
+
+  mat-icon {
+    font-size: 18px;
+    width: 18px;
+    height: 18px;
+  }
+}
+
+.receiving-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.receiving-percent {
+  font-variant-numeric: tabular-nums;
+}

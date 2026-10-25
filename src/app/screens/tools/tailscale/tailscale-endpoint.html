@@ -88,15 +88,20 @@
             <mat-icon class="lead">move_to_inbox</mat-icon>
             <div class="text">
               <span class="title">Taildrop</span>
-              <span class="sub muted">
-                @if (s.receivingFileCount) {
-                  Receiving {{ s.receivingFileCount }} ·
-                }
-                {{ s.waitingFileCount }} received
-                @if (s.unreadFileCount) {
-                  · {{ s.unreadFileCount }} new
-                }
-              </span>
+              @if (receiving().length) {
+                <span class="sub muted ellipsis">
+                  Receiving {{ receiving().length === 1 ? receiving()[0].name : receiving().length + ' files' }}
+                  · {{ receivingPercent().toFixed(0) }}%
+                </span>
+                <mat-progress-bar mode="determinate" [value]="receivingPercent()" />
+              } @else {
+                <span class="sub muted">
+                  {{ s.waitingFileCount }} waiting
+                  @if (s.unreadFileCount) {
+                    · {{ s.unreadFileCount }} new
+                  }
+                </span>
+              }
             </div>
             @if (s.unreadFileCount) {
               <span class="badge">{{ s.unreadFileCount }}</span>

@@ -38,6 +38,21 @@ if ($process -and -not $process.WaitForExit($TimeoutMs)) { exit 3 }
 exit 0
 `;
 
+const CYRILLIC_PAIRS: [string, string][] = [
+  ['а', 'a'], ['б', 'b'], ['в', 'v'], ['г', 'g'], ['д', 'd'], ['е', 'e'], ['ё', 'e'], ['ж', 'zh'],
+  ['з', 'z'], ['и', 'i'], ['й', 'y'], ['к', 'k'], ['л', 'l'], ['м', 'm'], ['н', 'n'], ['о', 'o'],
+  ['п', 'p'], ['р', 'r'], ['с', 's'], ['т', 't'], ['у', 'u'], ['ф', 'f'], ['х', 'kh'], ['ц', 'ts'],
+  ['ч', 'ch'], ['ш', 'sh'], ['щ', 'shch'], ['ъ', ''], ['ы', 'y'], ['ь', ''], ['э', 'e'], ['ю', 'yu'],
+  ['я', 'ya'], ['є', 'ye'], ['і', 'i'], ['ї', 'yi'], ['ґ', 'g'], ['ў', 'u'],
+];
+/** Lower- and upper-case Cyrillic → Latin (BGN/PCGN-style, simplified). */
+const CYRILLIC: Record<string, string> = Object.fromEntries(
+  CYRILLIC_PAIRS.flatMap(([cyr, lat]) => [
+    [cyr, lat],
+    [cyr.toUpperCase(), lat.charAt(0).toUpperCase() + lat.slice(1)],
+  ]),
+);
+
 export class WindowsCorePlatform extends CorePlatform {
   readonly id = 'windows';
   readonly binaryName = 'sing-box.exe';
@@ -110,6 +125,31 @@ export class WindowsCorePlatform extends CorePlatform {
   async findProcesses(imageName: string): Promise<number[]> {
     const result = await this.exec(`tasklist /FI "IMAGENAME eq ${imageName.replace(/"/g, '')}" /FO CSV /NH`);
     return [...result.stdOut.matchAll(/^"[^"]+","(\d+)"/gm)].map((m) => Number(m[1]));
+  }
+
+  /**
+   * Neutralino's Windows notifications mangle every non-ASCII character (UTF-8 read as ANSI),
+   * so text is transliterated: Cyrillic to Latin, common punctuation to ASCII, the rest to "?".
+   */
+  protected override notificationText(text: string): string {
+    return (
+      text
+        // Cyrillic first: decomposing would turn "й" into "и" + breve.
+        .replace(/[Ѐ-ӿ]/g, (c) => CYRILLIC[c] ?? '?')
+        // Then drop accents from Latin letters (é → e).
+        .normalize('NFKD')
+        .replace(/[̀-ͯ]/g, '')
+        .replace(/[·•–—]/g, '-')
+        .replace(/[«»“”„]/g, '"')
+        .replace(/[‘’]/g, "'")
+        .replace(/…/g, '...')
+        .replace(/[^\x20-\x7e]/g, '?')
+    );
+  }
+
+  async revealFile(path: string): Promise<void> {
+    // explorer.exe exits with 1 even on success, so its result is not checked.
+    await this.exec(`explorer.exe /select,${this.quote(this.nativePath(path))}`);
   }
 
   async openTerminal(command: string, title: string): Promise<void> {

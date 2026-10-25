@@ -4,11 +4,13 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatMenuModule } from '@angular/material/menu';
+import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatSelectModule } from '@angular/material/select';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { RouterLink } from '@angular/router';
 import { DaemonService } from '../../../core/daemon/daemon.service';
+import { TaildropService } from '../../../core/daemon/taildrop.service';
 import { TailscalePeer } from '../../../core/daemon/models';
 import { NativeService } from '../../../core/native.service';
 import { Dialogs } from '../../../shared/dialogs';
@@ -22,6 +24,7 @@ import { allPeers, ipv4, isRunning, peerTitle, relativeTime, stateLabel } from '
     MatFormFieldModule,
     MatIconModule,
     MatMenuModule,
+    MatProgressBarModule,
     MatProgressSpinnerModule,
     MatSelectModule,
     MatTooltipModule,
@@ -31,6 +34,7 @@ import { allPeers, ipv4, isRunning, peerTitle, relativeTime, stateLabel } from '
 })
 export class TailscaleEndpoint {
   private readonly daemon = inject(DaemonService);
+  private readonly taildrop = inject(TaildropService);
   private readonly native = inject(NativeService);
   private readonly dialogs = inject(Dialogs);
   private readonly location = inject(Location);
@@ -59,6 +63,13 @@ export class TailscaleEndpoint {
     const id = this.selectedExitNode();
     const peer = id ? this.exitNodeOptions().find((p) => p.stableID === id) : undefined;
     return peer ? peerTitle(peer) : id ? (this.status()?.exitNode ? peerTitle(this.status()!.exitNode!) : id) : 'None';
+  });
+
+  readonly receiving = computed(() => this.taildrop.receivingFor(this.tag()));
+  readonly receivingPercent = computed(() => {
+    const files = this.receiving();
+    const total = files.reduce((sum, f) => sum + f.size, 0);
+    return total ? Math.min(100, (files.reduce((sum, f) => sum + f.receivedBytes, 0) / total) * 100) : 0;
   });
 
   readonly title = peerTitle;

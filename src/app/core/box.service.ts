@@ -1,5 +1,6 @@
 import { Injectable, inject, signal } from '@angular/core';
 import { Subject } from 'rxjs';
+import { errorMessage } from '../shared/errors';
 import { ClashApiService, ClashEndpoint } from './clash-api.service';
 import { CoreBinaryService, compareVersions } from './core-binary.service';
 import { DaemonEndpoint, DaemonService } from './daemon/daemon.service';
@@ -138,7 +139,7 @@ export class BoxService {
       try {
         config = parseConfig(content);
       } catch (e) {
-        this.fail('invalidConfiguration', (e as Error).message);
+        this.fail('invalidConfiguration', errorMessage(e));
         return;
       }
 
@@ -185,7 +186,7 @@ export class BoxService {
       this.status.set('started');
     } catch (e) {
       await this.terminate();
-      this.fail('startService', (e as Error).message);
+      this.fail('startService', errorMessage(e));
     }
   }
 

@@ -10,9 +10,10 @@ import { MatInputModule } from '@angular/material/input';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { MatTooltipModule } from '@angular/material/tooltip';
-import { clipboard } from '@neutralinojs/lib';
+import { clipboard, os } from '@neutralinojs/lib';
 import { BoxService } from '../../core/box.service';
 import { CoreBinaryService, LatestRelease, compareVersions } from '../../core/core-binary.service';
+import { TaildropService } from '../../core/daemon/taildrop.service';
 import { NativeService } from '../../core/native.service';
 import { CorePlatform } from '../../core/platform/core-platform';
 import { ALL_DASHBOARD_CARDS, DashboardCard, SettingsService, ThemeMode } from '../../core/settings.service';
@@ -54,6 +55,9 @@ export class Settings {
   readonly core = inject(CoreBinaryService);
   readonly box = inject(BoxService);
   readonly settings = inject(SettingsService);
+  private readonly taildrop = inject(TaildropService);
+  /** Effective Taildrop folder (the Downloads folder unless one is chosen). */
+  readonly taildropFolder = signal('');
 
   readonly cards = ALL_DASHBOARD_CARDS;
   readonly cardLabels = CARD_LABELS;
@@ -85,6 +89,7 @@ export class Settings {
       void this.native.dataDir().then((dir) => this.dataDir.set(this.platform.nativePath(dir)));
       void this.refreshWorkDirSize();
       void this.core.refresh();
+      void this.refreshTaildropFolder();
     }
   }
 
@@ -180,6 +185,26 @@ export class Settings {
   async setApiServicePort(value: string): Promise<void> {
     await this.settings.set('apiServicePort', Number(value));
     if (this.box.status() === 'started') this.dialogs.toast('Restart the service to apply');
+  }
+
+  async chooseTaildropFolder(): Promise<void> {
+    const folder = await os.showFolderDialog('Folder for received Taildrop files', { defaultPath: this.taildropFolder() });
+    if (!folder) return;
+    await this.settings.set('taildropFolder', folder);
+    await this.refreshTaildropFolder();
+  }
+
+  async resetTaildropFolder(): Promise<void> {
+    await this.settings.set('taildropFolder', '');
+    await this.refreshTaildropFolder();
+  }
+
+  async openTaildropFolder(): Promise<void> {
+    await this.native.open(await this.taildrop.folder());
+  }
+
+  private async refreshTaildropFolder(): Promise<void> {
+    this.taildropFolder.set(this.platform.nativePath(await this.taildrop.folder()));
   }
 
   setSystemProxy(enabled: boolean): Promise<void> {

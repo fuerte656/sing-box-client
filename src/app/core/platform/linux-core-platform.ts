@@ -41,6 +41,19 @@ export class LinuxCorePlatform extends PosixCorePlatform {
     );
   }
 
+  /** Asks the desktop's file manager to select the file (freedesktop FileManager1), else opens its folder. */
+  async revealFile(path: string): Promise<void> {
+    const uri = 'file://' + path.split('/').map(encodeURIComponent).join('/');
+    const select = await this.exec(
+      `dbus-send --session --print-reply --dest=org.freedesktop.FileManager1 /org/freedesktop/FileManager1 ` +
+        `org.freedesktop.FileManager1.ShowItems array:string:${this.quote(uri)} string:''`,
+    );
+    if (select.exitCode === 0) return;
+    const folder = path.slice(0, path.lastIndexOf('/')) || '/';
+    const result = await this.exec(`xdg-open ${this.quote(folder)}`);
+    if (result.exitCode !== 0) throw new Error(result.stdErr.trim() || 'No file manager found');
+  }
+
   async openTerminal(command: string, title: string): Promise<void> {
     const shellCommand = this.quote(`printf '\\033]0;%s\\007' ${this.quote(title)}; ${command}; echo; printf 'Press Enter to close'; read _`);
     for (const template of TERMINALS) {

@@ -23,6 +23,11 @@ export class MacosCorePlatform extends PosixCorePlatform {
     return 'relaunch';
   }
 
+  async revealFile(path: string): Promise<void> {
+    const result = await this.exec(`open -R ${this.quote(path)}`);
+    if (result.exitCode !== 0) throw new Error(result.stdErr.trim() || 'Failed to reveal file in Finder');
+  }
+
   async openTerminal(command: string, title: string): Promise<void> {
     const shellCommand = `printf '\\033]0;%s\\007' ${this.quote(title)}; ${command}`;
     const script = `tell application "Terminal"

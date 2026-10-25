@@ -7,6 +7,16 @@
         <span class="subtitle">{{ statusLabel() }}</span>
       </div>
     </div>
+    @if (taildrop.receiving(); as r) {
+      <a class="receiving" [routerLink]="['/tools/tailscale', r.endpointTag, 'taildrop']">
+        <div class="receiving-text">
+          <mat-icon>downloading</mat-icon>
+          <span class="receiving-name">{{ r.files.length === 1 ? r.files[0].name : r.files.length + ' files' }}</span>
+          <span class="receiving-percent">{{ r.percent.toFixed(0) }}%</span>
+        </div>
+        <mat-progress-bar mode="determinate" [value]="r.percent" />
+      </a>
+    }
     <mat-nav-list>
       @for (item of nav; track item.path) {
         <a mat-list-item [routerLink]="item.path" routerLinkActive #rla="routerLinkActive" [activated]="rla.isActive">

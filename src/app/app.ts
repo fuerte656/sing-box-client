@@ -2,11 +2,12 @@ import { Component, DestroyRef, computed, effect, inject } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { MatIconModule } from '@angular/material/icon';
 import { MatListModule } from '@angular/material/list';
+import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatSidenavModule } from '@angular/material/sidenav';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
-import { os } from '@neutralinojs/lib';
 import { AppLifecycleService } from './core/app-lifecycle.service';
+import { TaildropService } from './core/daemon/taildrop.service';
 import { BoxService, ServiceAlert } from './core/box.service';
 import { NativeService } from './core/native.service';
 import { CorePlatform } from './core/platform/core-platform';
@@ -23,7 +24,16 @@ interface NavItem {
 
 @Component({
   selector: 'app-root',
-  imports: [RouterOutlet, RouterLink, RouterLinkActive, MatSidenavModule, MatListModule, MatIconModule, MatTooltipModule],
+  imports: [
+    RouterOutlet,
+    RouterLink,
+    RouterLinkActive,
+    MatSidenavModule,
+    MatListModule,
+    MatIconModule,
+    MatProgressBarModule,
+    MatTooltipModule,
+  ],
   templateUrl: './app.html',
   styleUrl: './app.scss',
 })
@@ -36,6 +46,7 @@ export class App {
   private readonly window = inject(WindowService);
   private readonly platform = inject(CorePlatform);
   readonly native = inject(NativeService);
+  readonly taildrop = inject(TaildropService);
 
   readonly status = this.box.status;
   readonly statusLabel = computed(() => {
@@ -72,7 +83,7 @@ export class App {
     const { title, message } = alertText(alert);
     // The dialog below waits for the user; while the app sits in the tray, also notify.
     if (!this.window.visible() && this.settings.get('notifications')) {
-      await os.showNotification(title, message || title).catch(() => undefined);
+      await this.platform.showNotification(title, message || title).catch(() => undefined);
     }
     switch (alert.type) {
       case 'coreMissing':

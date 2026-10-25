@@ -1,11 +1,10 @@
 import { Injectable, computed, inject, signal } from '@angular/core';
-import { filesystem } from '@neutralinojs/lib';
 import { CoreBinaryService } from '../core-binary.service';
 import { NativeService } from '../native.service';
 import { CorePlatform } from '../platform/core-platform';
 import { DaemonClient, GrpcStatus, GrpcWebError } from './grpc-web';
+import { downloadTaildropFile as downloadToFile } from './taildrop-download';
 import {
-  DownloadTaildropFileChunk,
   TaildropInbox,
   TailscaleEndpointStatus,
   TailscalePingResponse,
@@ -17,7 +16,6 @@ export interface DaemonEndpoint {
 }
 
 const RESUBSCRIBE_DELAY = 2000;
-
 /**
  * sing-box's API service (daemon.StartedService), the same API SFA's Tools screens use.
  * Available with sing-box 1.14+; BoxService adds the service to the runtime config.
@@ -77,6 +75,24 @@ export class DaemonService {
     return this.require().stream<TaildropInbox>('SubscribeTaildropInbox', { endpointTag }, onInbox, signal);
   }
 
+  /** Current inbox once: the first message of SubscribeTaildropInbox. */
+  async fetchTaildropInbox(endpointTag: string): Promise<TaildropInbox> {
+    const abort = new AbortController();
+    let inbox: TaildropInbox | undefined;
+    await this.subscribeTaildropInbox(
+      endpointTag,
+      (message) => {
+        inbox = message;
+        abort.abort();
+      },
+      abort.signal,
+    ).catch((e) => {
+      if (!inbox) throw e;
+    });
+    if (!inbox) throw new Error('Taildrop inbox unavailable');
+    return inbox;
+  }
+
   async markTaildropInboxRead(endpointTag: string): Promise<void> {
     await this.require().unary('MarkTaildropInboxRead', { endpointTag });
   }
@@ -89,31 +105,17 @@ export class DaemonService {
     await this.require().unary('CancelTaildropReceiving', { endpointTag, senderID, name });
   }
 
-  /** Streams a received file into `target` (a native path chosen by the user). */
+  /** Streams a received file into `target` (a native path chosen by the user); see taildrop-download.ts. */
   async downloadTaildropFile(
     endpointTag: string,
     name: string,
+    size: number,
     target: string,
     onProgress?: (written: number, total: number) => void,
   ): Promise<void> {
-    const path = target.replace(/\\/g, '/');
-    let written = 0;
-    let first = true;
-    let pending = Promise.resolve();
-    await this.require().stream<DownloadTaildropFileChunk>('DownloadTaildropFile', { endpointTag, name }, (chunk) => {
-      const data = chunk.data.slice().buffer;
-      const isFirst = first;
-      first = false;
-      // Writes are chained so chunks land in order even though the stream does not wait for them.
-      pending = pending.then(async () => {
-        if (isFirst) await filesystem.writeBinaryFile(path, data);
-        else await filesystem.appendBinaryFile(path, data);
-        written += data.byteLength;
-        onProgress?.(written, chunk.size);
-      });
-    });
-    await pending;
-    if (first) await filesystem.writeBinaryFile(path, new ArrayBuffer(0));
+    const tempDir = await this.native.path('taildrop-incoming');
+    await this.native.ensureDir(tempDir);
+    await downloadToFile(this.require(), endpointTag, name, size, tempDir, target, onProgress);
   }
 
   /**

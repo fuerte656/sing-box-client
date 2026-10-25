@@ -1,3 +1,5 @@
+import { os } from '@neutralinojs/lib';
+
 export type PlatformId = 'windows' | 'linux' | 'macos';
 
 export interface ExecResult {
@@ -64,6 +66,19 @@ export abstract class CorePlatform {
 
   /** PIDs of running processes with the given executable name. */
   abstract findProcesses(imageName: string): Promise<number[]>;
+
+  /** Desktop notification (shown near the tray on Windows). */
+  async showNotification(title: string, body: string): Promise<void> {
+    await os.showNotification(this.notificationText(title), this.notificationText(body));
+  }
+
+  /** Adapts text to what the OS notification API can display; unchanged by default. */
+  protected notificationText(text: string): string {
+    return text;
+  }
+
+  /** Opens the file manager at a file's folder, with the file selected where the OS supports it. */
+  abstract revealFile(path: string): Promise<void>;
 
   /** Runs an interactive command (e.g. SSH) in a new terminal window. */
   abstract openTerminal(command: string, title: string): Promise<void>;

@@ -168,6 +168,39 @@
         </div>
         <div class="row">
           <div class="row-text">
+            <span class="row-title">Taildrop notifications</span>
+            <span class="row-sub muted">Notify when a file is received over Tailscale</span>
+          </div>
+          <mat-slide-toggle
+            [checked]="settings.values().taildropNotifications"
+            (change)="settings.set('taildropNotifications', $event.checked)"
+          />
+        </div>
+        <div class="row">
+          <div class="row-text">
+            <span class="row-title">Save received files automatically</span>
+            <span class="row-sub muted">Taildrop files go straight to the folder below, like the Tailscale app</span>
+          </div>
+          <mat-slide-toggle
+            [checked]="settings.values().taildropAutoSave"
+            (change)="settings.set('taildropAutoSave', $event.checked)"
+          />
+        </div>
+        <div class="row">
+          <div class="row-text">
+            <span class="row-title">Taildrop folder</span>
+            <span class="row-sub mono path">{{ taildropFolder() || '—' }}</span>
+          </div>
+          <button mat-icon-button (click)="openTaildropFolder()" matTooltip="Open folder">
+            <mat-icon>folder_open</mat-icon>
+          </button>
+          <button mat-stroked-button (click)="chooseTaildropFolder()">Change…</button>
+          @if (settings.values().taildropFolder) {
+            <button mat-button (click)="resetTaildropFolder()">Default</button>
+          }
+        </div>
+        <div class="row">
+          <div class="row-text">
             <span class="row-title">Log buffer</span>
             <span class="row-sub muted">Maximum lines kept on the Log screen</span>
           </div>
