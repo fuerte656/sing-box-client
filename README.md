@@ -25,6 +25,21 @@ Runtime requirements:
 OS-specific behaviour (downloads, extraction, process control, elevation, notifications, file
 manager, terminal) lives behind the `CorePlatform` abstraction with one implementation per OS.
 
+## sing-box version
+
+**Minimum: sing-box 1.14.0.** Developed and tested with 1.14.4; **Settings → Core → Update**
+always installs the latest stable release.
+
+| Feature | Needs |
+| ------- | ----- |
+| Dashboard, Groups, Connections, Log, profiles, system proxy, Clash mode | Clash API (`experimental.clash_api`), which the client enables automatically. Older 1.x cores may work for these screens but are not tested or supported |
+| **Tools → Tailscale** (status, login, exit node, peers, ping, SSH, logout) | sing-box **1.14+**: API service (`services: [{ "type": "api" }]`), added to the config automatically, and a `tailscale` endpoint in the profile |
+| **Taildrop** receive and send | sing-box **1.14+**, same as Tailscale |
+
+With an older core the Tools screen shows "Tools need sing-box 1.14 or newer" and the rest of the
+client keeps working. The official release builds include Tailscale; a self-built core needs the
+`with_tailscale` build tag.
+
 ## Features
 
 | Screen      | What it does |
