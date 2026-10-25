@@ -1,4 +1,4 @@
-# sing-box client
+# sing-box client for Desktop
 
 Cross-platform desktop client for [sing-box](https://github.com/SagerNet/sing-box), modeled on the
 screens of SFA (sing-box for Android). Built with [Neutralinojs](https://neutralino.js.org),
