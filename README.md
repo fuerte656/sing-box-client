@@ -18,7 +18,7 @@ the UI runs in the system webview, so there is no bundled Chromium or Node.js.
 Runtime requirements:
 
 - **Windows 10/11**: WebView2 runtime (always present on Windows 11, installed with Edge on Windows 10).
-- **Linux**: WebKitGTK (`libwebkit2gtk-4.1`), `curl` or `wget`, `tar`; `pkexec` for TUN. Tray needs an
+- **Linux**: WebKitGTK (`libwebkit2gtk-4.1` or `-4.0`), `curl` or `wget`, `tar`; `pkexec` for TUN. Tray needs an
   AppIndicator-compatible desktop.
 - **macOS**: uses the built-in WKWebView; nothing extra to install.
 
