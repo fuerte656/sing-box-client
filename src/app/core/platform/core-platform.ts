@@ -93,6 +93,7 @@ export abstract class CorePlatform {
   goArch(arch: string): string {
     const value = arch.toLowerCase();
     if (value.includes('arm64') || value === 'aarch64') return 'arm64';
+    if (value === 'arm' || value === 'armhf' || value.startsWith('armv7')) return 'armv7';
     if (value === 'ia32' || value === 'x86' || value === '386') return '386';
     return 'amd64';
   }
