@@ -6,6 +6,7 @@ import { DaemonClient, GrpcStatus, GrpcWebError } from './grpc-web';
 import { downloadTaildropFile as downloadToFile } from './taildrop-download';
 import {
   TaildropInbox,
+  TaildropSendServerMessage,
   TailscaleEndpointStatus,
   TailscalePingResponse,
 } from './models';
@@ -118,26 +119,9 @@ export class DaemonService {
     await downloadToFile(this.require(), endpointTag, name, size, tempDir, target, onProgress);
   }
 
-  /**
-   * Sends files with the sing-box CLI: SendTaildropFiles is a client-streaming RPC,
-   * which gRPC-Web in a browser cannot make.
-   */
-  async sendTaildropFiles(endpointTag: string, peer: string, files: string[]): Promise<void> {
-    const p = this.platform;
-    const command = [
-      await this.cliPrefix(),
-      'tailscale',
-      'taildrop',
-      'send',
-      '--endpoint',
-      p.quote(endpointTag),
-      p.quote(peer),
-      ...files.map((f) => p.quote(p.nativePath(f))),
-    ].join(' ');
-    const result = await this.native.exec(command);
-    if (result.exitCode !== 0) {
-      throw new Error(cleanCliError(result.stdErr || result.stdOut) || `exit code ${result.exitCode}`);
-    }
+  /** Opens a SendTaildropFiles stream (start, chunks, fileDone…) — used by TaildropSendService. */
+  sendTaildropStream(onMessage: (message: TaildropSendServerMessage) => void) {
+    return this.require().bidi<object, TaildropSendServerMessage>('SendTaildropFiles', onMessage);
   }
 
   /** Opens `sing-box api tailscale ssh` in a terminal window (needs a TUN inbound to route to the peer). */

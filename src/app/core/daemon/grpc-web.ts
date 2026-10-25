@@ -19,6 +19,7 @@ export class GrpcWebError extends Error {
   }
 }
 
+const CRLF = String.fromCharCode(13, 10);
 const CONVERSION: IConversionOptions = { longs: Number, enums: String, defaults: true, arrays: true };
 
 let service: Service | undefined;
@@ -27,10 +28,22 @@ function startedService(): Service {
   return service;
 }
 
+/** A client- or bidi-streaming call in progress (see {@link DaemonClient.bidi}). */
+export interface BidiStream<Req> {
+  send(message: Req): void;
+  /** Signals that no more messages follow. */
+  halfClose(): void;
+  /** Bytes queued in the WebSocket but not yet sent, for backpressure. */
+  readonly bufferedAmount: number;
+  cancel(): void;
+  /** Resolves when the server ends the call with OK, rejects with a {@link GrpcWebError} otherwise. */
+  readonly done: Promise<void>;
+}
+
 /**
- * Minimal gRPC-Web client (binary protobuf, HTTP/1.1) for sing-box's API service
- * (`daemon.StartedService`). Unary and server-streaming calls are supported; client streaming
- * is not possible from a browser, so those calls go through the sing-box CLI instead.
+ * Minimal gRPC-Web client (binary protobuf) for sing-box's API service (`daemon.StartedService`).
+ * Unary and server-streaming calls use HTTP POST; client/bidi streaming uses sing-box's
+ * `grpc-websockets` bridge, since plain gRPC-Web cannot stream requests from a browser.
  */
 export class DaemonClient {
   constructor(
@@ -104,6 +117,83 @@ export class DaemonClient {
       }
       if (done) return;
     }
+  }
+
+  /**
+   * Opens a bidirectional stream over sing-box's WebSocket bridge. Protocol: the first binary
+   * message holds the request headers; every later one is 0x00 + a gRPC frame, or a single 0x01
+   * to half-close. The server answers with gRPC-Web frames (0x80 = headers/trailers).
+   */
+  bidi<Req extends object, Res = Record<string, unknown>>(method: string, onMessage: (message: Res) => void): Promise<BidiStream<Req>> {
+    const rpc = this.method(method);
+    const requestType = rpc.resolvedRequestType as Type;
+    const responseType = rpc.resolvedResponseType as Type;
+    const ws = new WebSocket(`${this.baseUrl.replace(/^http/, 'ws')}/daemon.StartedService/${method}`, 'grpc-websockets');
+    ws.binaryType = 'arraybuffer';
+
+    let buffer: Uint8Array = new Uint8Array(0);
+    let status: { code: number; message: string } | null = null;
+    let cancelled = false;
+    let settle!: { resolve: () => void; reject: (e: unknown) => void };
+    const done = new Promise<void>((resolve, reject) => (settle = { resolve, reject }));
+    done.catch(() => undefined); // observed by the caller; avoid unhandled-rejection noise
+
+    ws.onmessage = (event) => {
+      buffer = concat(buffer, new Uint8Array(event.data as ArrayBuffer));
+      while (buffer.length >= 5) {
+        const length = new DataView(buffer.buffer, buffer.byteOffset).getUint32(1);
+        if (buffer.length < 5 + length) break;
+        const flag = buffer[0];
+        const frame = buffer.subarray(5, 5 + length);
+        buffer = buffer.subarray(5 + length);
+        if (flag & 0x80) {
+          const metadata = parseTrailers(new TextDecoder().decode(frame));
+          if (metadata['grpc-status'] !== undefined) {
+            status = { code: Number(metadata['grpc-status']), message: decodeURIComponent(metadata['grpc-message'] ?? '') };
+          }
+        } else {
+          onMessage(responseType.toObject(responseType.decode(frame), CONVERSION) as Res);
+        }
+      }
+    };
+    ws.onclose = () => {
+      if (cancelled) settle.reject(new GrpcWebError(GrpcStatus.CANCELLED, 'Cancelled'));
+      else if (!status) settle.reject(new GrpcWebError(GrpcStatus.UNAVAILABLE, `${method}: connection closed`));
+      else if (status.code !== GrpcStatus.OK) settle.reject(new GrpcWebError(status.code, status.message));
+      else settle.resolve();
+    };
+
+    const frame = (prefix: number, payload: Uint8Array) => {
+      const message = new Uint8Array(6 + payload.length);
+      message[0] = prefix;
+      new DataView(message.buffer).setUint32(2, payload.length);
+      message.set(payload, 6);
+      return message;
+    };
+    const stream: BidiStream<Req> = {
+      send: (message) => ws.send(frame(0, requestType.encode(requestType.fromObject(message)).finish())),
+      halfClose: () => ws.send(Uint8Array.of(1)),
+      get bufferedAmount() {
+        return ws.bufferedAmount;
+      },
+      cancel: () => {
+        cancelled = true;
+        ws.close();
+      },
+      done,
+    };
+
+    return new Promise((resolve, reject) => {
+      ws.onopen = () => {
+        // MIME header block; the server appends the terminating empty line.
+        const lines = ['content-type: application/grpc-web+proto', 'x-grpc-web: 1'];
+        if (this.secret) lines.push(`authorization: Bearer ${this.secret}`);
+        const headers = lines.map((line) => line + CRLF).join('');
+        ws.send(new TextEncoder().encode(headers));
+        resolve(stream);
+      };
+      ws.onerror = () => reject(new GrpcWebError(GrpcStatus.UNAVAILABLE, `${method}: WebSocket connection failed`));
+    });
   }
 
   private method(name: string): Method {

@@ -96,3 +96,8 @@
 .receiving-percent {
   font-variant-numeric: tabular-nums;
 }
+
+.sending {
+  background: var(--mat-sys-tertiary-container);
+  color: var(--mat-sys-on-tertiary-container);
+}

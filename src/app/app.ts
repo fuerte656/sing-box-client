@@ -7,6 +7,7 @@ import { MatSidenavModule } from '@angular/material/sidenav';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { AppLifecycleService } from './core/app-lifecycle.service';
+import { TaildropSendService } from './core/daemon/taildrop-send.service';
 import { TaildropService } from './core/daemon/taildrop.service';
 import { BoxService, ServiceAlert } from './core/box.service';
 import { NativeService } from './core/native.service';
@@ -47,6 +48,7 @@ export class App {
   private readonly platform = inject(CorePlatform);
   readonly native = inject(NativeService);
   readonly taildrop = inject(TaildropService);
+  readonly sender = inject(TaildropSendService);
 
   readonly status = this.box.status;
   readonly statusLabel = computed(() => {
@@ -72,6 +74,12 @@ export class App {
   ];
 
   constructor() {
+    // Only explicit drop zones accept files; elsewhere a drop would navigate the webview to the file.
+    const ignoreDrop = (event: DragEvent) => {
+      if (!event.defaultPrevented) event.preventDefault();
+    };
+    window.addEventListener('dragover', ignoreDrop);
+    window.addEventListener('drop', ignoreDrop);
     effect(() => {
       const theme = this.settings.values().theme;
       document.documentElement.dataset['theme'] = theme;

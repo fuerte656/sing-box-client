@@ -7,6 +7,15 @@ export interface AlertText {
 
 /** Human-readable text for service alerts (mirrors SFA's Alert enum). */
 export function alertText(alert: ServiceAlert): AlertText {
+  if (alert.message?.includes('initialize cache-file: timeout')) {
+    return {
+      title: 'sing-box is already running',
+      message:
+        'Another sing-box is still using the cache file (usually left by a previous copy of this app that hung or was closed forcibly). ' +
+        'End sing-box.exe in Task Manager (Details tab), then press Start again.\n\n' +
+        alert.message,
+    };
+  }
   switch (alert.type) {
     case 'coreMissing':
       return {

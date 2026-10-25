@@ -42,24 +42,93 @@
       }
 
       @if (canSendFiles()) {
-        <h2 class="section-title">Taildrop</h2>
+        <div class="section-row">
+          <h2 class="section-title">Taildrop</h2>
+          @if (hasFinished()) {
+            <button mat-button (click)="sender.clearFinished(peerId())" matTooltip="Remove finished transfers from the list">
+              <mat-icon>clear_all</mat-icon> Clear
+            </button>
+          }
+        </div>
         <div class="group">
           <div
             class="drop-zone"
+            role="button"
+            tabindex="0"
             [class.dragging]="dragging()"
             (click)="chooseFiles()"
+            (keydown.enter)="chooseFiles()"
             (dragover)="onDragOver($event)"
             (dragleave)="dragging.set(false)"
             (drop)="onDrop($event)"
           >
-            @if (sending()) {
-              <span>Sending…</span>
-              <mat-progress-bar mode="indeterminate" />
-            } @else {
-              <mat-icon>upload_file</mat-icon>
-              <span>Drop files here to send, or click to choose</span>
-            }
+            <mat-icon>upload_file</mat-icon>
+            <span>{{ dragging() ? 'Release to send' : 'Drop files here to send, or click to choose' }}</span>
           </div>
+
+          @for (transfer of transfers(); track transfer.id) {
+            <div class="transfer">
+              <div class="transfer-head">
+                <mat-icon class="state" [attr.data-state]="transfer.state">
+                  @switch (transfer.state) {
+                    @case ('done') {
+                      check_circle
+                    }
+                    @case ('failed') {
+                      error
+                    }
+                    @case ('cancelled') {
+                      cancel
+                    }
+                    @default {
+                      upload
+                    }
+                  }
+                </mat-icon>
+                <span class="transfer-title">
+                  {{ transfer.files.length === 1 ? transfer.files[0].name : transfer.files.length + ' files' }}
+                </span>
+                <span class="muted transfer-meta">
+                  @switch (transfer.state) {
+                    @case ('sending') {
+                      {{ transferPercent(transfer).toFixed(0) }}%
+                    }
+                    @case ('done') {
+                      Sent
+                    }
+                    @case ('cancelled') {
+                      Cancelled
+                    }
+                    @case ('failed') {
+                      Failed
+                    }
+                  }
+                </span>
+                @if (transfer.state === 'sending') {
+                  <button mat-icon-button (click)="sender.cancel(transfer.id)" matTooltip="Cancel">
+                    <mat-icon>close</mat-icon>
+                  </button>
+                }
+              </div>
+              @if (transfer.error) {
+                <div class="transfer-error">{{ transfer.error }}</div>
+              }
+              @for (file of transfer.files; track $index) {
+                <div class="transfer-file">
+                  <div class="transfer-file-row">
+                    <span class="ellipsis file-name">{{ file.name }}</span>
+                    <span class="muted file-bytes">{{ file.sent | bytes }} / {{ file.size | bytes }}</span>
+                  </div>
+                  <mat-progress-bar
+                    mode="determinate"
+                    [value]="filePercent(file)"
+                    [class.finished]="file.done"
+                    [class.stopped]="transfer.state === 'failed' || transfer.state === 'cancelled'"
+                  />
+                </div>
+              }
+            </div>
+          }
         </div>
       }
 

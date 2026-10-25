@@ -17,6 +17,18 @@
         <mat-progress-bar mode="determinate" [value]="r.percent" />
       </a>
     }
+    @if (sender.active(); as a) {
+      <a class="receiving sending" [routerLink]="['/tools/tailscale', a.transfer.endpointTag, 'peer', a.transfer.peerStableID]">
+        <div class="receiving-text">
+          <mat-icon>upload</mat-icon>
+          <span class="receiving-name">
+            {{ a.fileCount === 1 ? a.transfer.files[0].name : a.fileCount + ' files' }} → {{ a.transfer.peerName }}
+          </span>
+          <span class="receiving-percent">{{ a.percent.toFixed(0) }}%</span>
+        </div>
+        <mat-progress-bar mode="determinate" [value]="a.percent" />
+      </a>
+    }
     <mat-nav-list>
       @for (item of nav; track item.path) {
         <a mat-list-item [routerLink]="item.path" routerLinkActive #rla="routerLinkActive" [activated]="rla.isActive">

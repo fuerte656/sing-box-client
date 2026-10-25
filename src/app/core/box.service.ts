@@ -4,6 +4,7 @@ import { errorMessage } from '../shared/errors';
 import { ClashApiService, ClashEndpoint } from './clash-api.service';
 import { CoreBinaryService, compareVersions } from './core-binary.service';
 import { DaemonEndpoint, DaemonService } from './daemon/daemon.service';
+import { InstanceService } from './instance.service';
 import { parseConfig } from './json';
 import { LogService } from './log.service';
 import { NativeService, ProcessEvent } from './native.service';
@@ -49,6 +50,7 @@ export class BoxService {
   private readonly clash = inject(ClashApiService);
   private readonly logs = inject(LogService);
   private readonly daemon = inject(DaemonService);
+  private readonly instance = inject(InstanceService);
 
   readonly status = signal<ServiceStatus>('stopped');
   readonly systemProxy = signal<SystemProxyStatus>({ available: false, enabled: false });
@@ -181,6 +183,7 @@ export class BoxService {
         return;
       }
       this.corePid = await this.platform.resolveCorePid(this.process!.pid);
+      void this.instance.setCorePid(this.corePid).catch(() => undefined);
       this.clash.connect(endpoint);
       if (daemonEndpoint) this.daemon.connect(daemonEndpoint);
       this.status.set('started');
@@ -291,6 +294,7 @@ export class BoxService {
     }
     this.process = null;
     this.corePid = null;
+    void this.instance.setCorePid(null).catch(() => undefined);
   }
 
   private waitForExit(timeout: number): Promise<boolean> {
@@ -326,6 +330,7 @@ export class BoxService {
         this.logs.system(`sing-box exited with code ${event.data}`, Number(event.data) === 0 ? 'info' : 'error');
         this.process = null;
         this.corePid = null;
+        void this.instance.setCorePid(null).catch(() => undefined);
         const waiters = this.exitWaiters;
         this.exitWaiters = [];
         waiters.forEach((w) => w());

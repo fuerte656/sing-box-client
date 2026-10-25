@@ -7,9 +7,16 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatTooltipModule } from '@angular/material/tooltip';
-import { clipboard, filesystem, os } from '@neutralinojs/lib';
+import { clipboard, os } from '@neutralinojs/lib';
 import { DaemonService } from '../../../core/daemon/daemon.service';
-import { NativeService } from '../../../core/native.service';
+import {
+  OutgoingFile,
+  OutgoingTransfer,
+  SendSource,
+  TaildropSendService,
+  sourceFromFile,
+  sourceFromPath,
+} from '../../../core/daemon/taildrop-send.service';
 import { Dialogs } from '../../../shared/dialogs';
 import { BytesPipe } from '../../../shared/format';
 import { PING_HISTORY, PingChart, PingSample } from './ping-chart';
@@ -38,7 +45,7 @@ interface AddressRow {
 })
 export class TailscalePeerScreen {
   private readonly daemon = inject(DaemonService);
-  private readonly native = inject(NativeService);
+  readonly sender = inject(TaildropSendService);
   private readonly dialogs = inject(Dialogs);
   private readonly location = inject(Location);
 
@@ -86,8 +93,10 @@ export class TailscalePeerScreen {
   private pingAbort: AbortController | null = null;
 
   // Taildrop send
-  readonly sending = signal(false);
   readonly dragging = signal(false);
+  /** This peer's transfers (session), newest first. */
+  readonly transfers = computed(() => this.sender.forPeer(this.peerId()));
+  readonly hasFinished = computed(() => this.transfers().some((t) => t.state !== 'sending'));
 
   // SSH
   readonly sshUser = signal('');
@@ -133,36 +142,37 @@ export class TailscalePeerScreen {
   }
 
   async chooseFiles(): Promise<void> {
-    if (this.sending()) return;
-    const files = await os.showOpenDialog('Send files with Taildrop', { multiSelections: true });
-    if (files.length) await this.send(files);
+    const paths = await os.showOpenDialog('Send files with Taildrop', { multiSelections: true });
+    if (!paths.length) return;
+    try {
+      this.send(await Promise.all(paths.map((path) => sourceFromPath(path))));
+    } catch (e) {
+      await this.dialogs.error('Cannot read the selected files', e);
+    }
   }
 
   onDragOver(event: DragEvent): void {
     event.preventDefault();
+    if (event.dataTransfer) event.dataTransfer.dropEffect = 'copy';
     this.dragging.set(true);
   }
 
-  /** Dropped files have no filesystem path in a webview: stage them in the data folder first. */
-  async onDrop(event: DragEvent): Promise<void> {
+  /** Dropped files are streamed straight from the browser's File objects. */
+  onDrop(event: DragEvent): void {
     event.preventDefault();
     this.dragging.set(false);
-    const dropped = Array.from(event.dataTransfer?.files ?? []);
-    if (!dropped.length || this.sending()) return;
-    const staging = await this.native.path('taildrop-outgoing', String(Date.now()));
-    await this.native.ensureDir(await this.native.path('taildrop-outgoing'));
-    await this.native.ensureDir(staging);
-    try {
-      const paths: string[] = [];
-      for (const file of dropped) {
-        const target = `${staging}/${file.name}`;
-        await filesystem.writeBinaryFile(target, await file.arrayBuffer());
-        paths.push(target);
-      }
-      await this.send(paths);
-    } finally {
-      await this.native.remove(staging);
-    }
+    const files = Array.from(event.dataTransfer?.files ?? []);
+    if (files.length) this.send(files.map(sourceFromFile));
+  }
+
+  filePercent(file: OutgoingFile): number {
+    return file.size ? Math.min(100, (file.sent / file.size) * 100) : file.done ? 100 : 0;
+  }
+
+  transferPercent(transfer: OutgoingTransfer): number {
+    const total = transfer.files.reduce((sum, f) => sum + f.size, 0);
+    const sent = transfer.files.reduce((sum, f) => sum + f.sent, 0);
+    return total ? Math.min(100, (sent / total) * 100) : 0;
   }
 
   async openSsh(): Promise<void> {
@@ -181,17 +191,10 @@ export class TailscalePeerScreen {
     return relativeTime(seconds);
   }
 
-  private async send(files: string[]): Promise<void> {
+  private send(sources: SendSource[]): void {
     const p = this.peer();
     if (!p) return;
-    this.sending.set(true);
-    try {
-      await this.daemon.sendTaildropFiles(this.tag(), ipv4(p) ?? p.tailscaleIPs[0], files);
-      this.dialogs.toast(files.length === 1 ? 'File sent' : `${files.length} files sent`);
-    } catch (e) {
-      await this.dialogs.error('Taildrop failed', e);
-    } finally {
-      this.sending.set(false);
-    }
+    this.sender.send(this.tag(), p.stableID, peerTitle(p), sources);
   }
+
 }

@@ -8,6 +8,8 @@ interface InstanceLock {
   /** Executable name, to tell a live instance from an unrelated process that reused the PID. */
   image: string;
   startedAt: number;
+  /** PID of the sing-box this instance runs, if any; it outlives the app when the app is killed or hangs. */
+  corePid?: number | null;
 }
 
 interface QuitRequest {
@@ -31,6 +33,7 @@ export class InstanceService {
   private readonly native = inject(NativeService);
   private readonly platform = inject(CorePlatform);
   private watcherId: number | null = null;
+  private lock: InstanceLock | null = null;
 
   /** Takes over from a running instance, then listens for quit requests from future ones. */
   async claim(onQuitRequested: () => Promise<void>): Promise<void> {
@@ -45,9 +48,15 @@ export class InstanceService {
         await this.platform.forceKill(previous.pid).catch(() => undefined);
       }
     }
+    // A previous copy that hung, crashed or was killed leaves its sing-box running, which keeps
+    // the cache file locked ("initialize cache-file: timeout"); stop it before going on.
+    if (previous?.corePid && previous.pid !== NL_PID) {
+      await this.stopLeftoverCore(previous.corePid);
+    }
     await this.closeUntracked(image);
     await this.native.remove(`${dir}/${QUIT_FILE}`);
-    await this.native.writeJson(`${dir}/${LOCK_FILE}`, { pid: NL_PID, image, startedAt: Date.now() } satisfies InstanceLock);
+    this.lock = { pid: NL_PID, image, startedAt: Date.now(), corePid: null };
+    await this.native.writeJson(`${dir}/${LOCK_FILE}`, this.lock);
 
     await events.on('watchFile', (ev) => {
       const detail = (ev as CustomEvent<{ id: number; filename: string }>).detail;
@@ -56,6 +65,16 @@ export class InstanceService {
       }
     });
     this.watcherId = await filesystem.createWatcher(dir);
+  }
+
+  /** Records the running sing-box PID (null when stopped) so a later copy can clean it up. */
+  async setCorePid(corePid: number | null): Promise<void> {
+    if (!this.lock) return;
+    const lockPath = await this.native.path(DIR, LOCK_FILE);
+    const current = await this.native.readJson<InstanceLock>(lockPath);
+    if (current && current.pid !== NL_PID) return; // another copy has taken over
+    this.lock = { ...this.lock, corePid };
+    await this.native.writeJson(lockPath, this.lock);
   }
 
   /** Removes the lock on a normal exit, unless another instance already owns it. */
@@ -74,6 +93,13 @@ export class InstanceService {
     if (!image || image.toLowerCase().startsWith('neutralino')) return;
     const others = (await this.platform.findProcesses(image)).filter((pid) => pid !== NL_PID);
     for (const pid of others) {
+      await this.platform.forceKill(pid).catch(() => undefined);
+    }
+  }
+
+  private async stopLeftoverCore(pid: number): Promise<void> {
+    if ((await this.platform.processImageName(pid))?.toLowerCase() !== this.platform.binaryName.toLowerCase()) return;
+    if (!(await this.platform.stopGracefully(pid, 5000).catch(() => false))) {
       await this.platform.forceKill(pid).catch(() => undefined);
     }
   }

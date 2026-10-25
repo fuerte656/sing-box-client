@@ -242,3 +242,83 @@
   display: block;
   font: var(--mat-sys-body-small);
 }
+
+// Taildrop send: transfer list under the drop zone.
+.transfer {
+  padding: 10px 16px 12px;
+  border-top: 1px solid var(--mat-sys-outline-variant);
+}
+
+.transfer-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 40px;
+
+  .state {
+    flex: none;
+    color: var(--mat-sys-primary);
+
+    &[data-state='done'] {
+      color: #2e9d4f;
+    }
+
+    &[data-state='failed'] {
+      color: var(--mat-sys-error);
+    }
+
+    &[data-state='cancelled'] {
+      color: var(--mat-sys-on-surface-variant);
+    }
+  }
+}
+
+.transfer-title {
+  flex: 1;
+  min-width: 0;
+  font: var(--mat-sys-body-large);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.transfer-meta {
+  font: var(--mat-sys-body-medium);
+  font-variant-numeric: tabular-nums;
+}
+
+.transfer-error {
+  margin: 0 0 6px 34px;
+  font: var(--mat-sys-body-small);
+  color: var(--mat-sys-error);
+  word-break: break-word;
+}
+
+.transfer-file {
+  margin: 6px 0 0 34px;
+}
+
+.transfer-file-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  font: var(--mat-sys-body-small);
+  margin-bottom: 4px;
+}
+
+.file-name {
+  min-width: 0;
+}
+
+.file-bytes {
+  flex: none;
+  font-variant-numeric: tabular-nums;
+}
+
+mat-progress-bar.finished {
+  --mat-progress-bar-active-indicator-color: #2e9d4f;
+}
+
+mat-progress-bar.stopped {
+  --mat-progress-bar-active-indicator-color: var(--mat-sys-outline);
+}
