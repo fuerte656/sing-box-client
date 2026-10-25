@@ -7,6 +7,17 @@ the UI runs in the system webview, so there is no bundled Chromium or Node.js.
 
 ![Dashboard on Windows](docs/screenshots/dashboard.png)
 
+## Download
+
+Get the latest build from **[Releases](https://github.com/fuerte656/sing-box-client/releases)**:
+pick the file for your OS and CPU from the table below. The app is a single file with no installer.
+sing-box itself is not included: after the first start, install it from **Settings → Core → Update**.
+
+- **Linux / macOS**: make the file executable first: `chmod +x sing-box-client-*`.
+- The binaries are not code-signed. On Windows, SmartScreen may show "Windows protected your PC":
+  choose *More info → Run anyway*. On macOS, right-click the app and choose *Open*, or run
+  `xattr -d com.apple.quarantine sing-box-client-mac_*`.
+
 ## Supported platforms
 
 | OS      | Builds                                     | Webview   | Status |
