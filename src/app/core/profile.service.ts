@@ -1,4 +1,4 @@
-import { Injectable, computed, inject, signal } from '@angular/core';
+import { Injectable, computed, effect, inject, signal } from '@angular/core';
 import { Subject } from 'rxjs';
 import { parseConfig } from './json';
 import { NativeService } from './native.service';
@@ -6,6 +6,9 @@ import { CorePlatform } from './platform/core-platform';
 import { SettingsService } from './settings.service';
 
 export type ProfileType = 'local' | 'remote';
+
+/** Outbound types the Groups screen lists. */
+const GROUP_OUTBOUNDS = new Set(['selector', 'urltest']);
 
 export interface Profile {
   id: number;
@@ -71,9 +74,20 @@ export class ProfileService {
   readonly selected = computed(() => this.profiles().find((p) => p.id === this.selectedId()) ?? null);
   /** Emits the id of a profile whose configuration content changed. */
   readonly contentChanged = new Subject<number>();
+  /** Whether the selected profile declares selector/urltest outbounds; null until checked. */
+  readonly selectedHasGroups = signal<boolean | null>(null);
+
+  private groupsCheck = 0;
 
   private loaded?: Promise<void>;
   private updateTimer?: ReturnType<typeof setInterval>;
+
+  constructor() {
+    effect(() => void this.checkGroups(this.selected()?.id));
+    this.contentChanged.subscribe((id) => {
+      if (id === this.selectedId()) void this.checkGroups(id);
+    });
+  }
 
   load(): Promise<void> {
     this.loaded ??= (async () => {
@@ -175,6 +189,21 @@ export class ProfileService {
 
   async exportTo(id: number, target: string): Promise<void> {
     await this.native.writeText(target.replace(/\\/g, '/'), await this.readContent(id));
+  }
+
+  private async checkGroups(id: number | undefined): Promise<void> {
+    if (!this.native.available) return;
+    const check = ++this.groupsCheck;
+    let hasGroups = false;
+    if (id !== undefined) {
+      try {
+        const config = parseConfig<{ outbounds?: { type?: string }[] }>(await this.readContent(id));
+        hasGroups = (config.outbounds ?? []).some((o) => GROUP_OUTBOUNDS.has(o.type ?? ''));
+      } catch {
+        // An unreadable or invalid profile has no groups to show.
+      }
+    }
+    if (check === this.groupsCheck) this.selectedHasGroups.set(hasGroups);
   }
 
   private async fetchRemote(url: string, target: string): Promise<void> {

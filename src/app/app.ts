@@ -10,8 +10,10 @@ import { AppLifecycleService } from './core/app-lifecycle.service';
 import { TaildropSendService } from './core/daemon/taildrop-send.service';
 import { TaildropService } from './core/daemon/taildrop.service';
 import { BoxService, ServiceAlert } from './core/box.service';
+import { ClashApiService } from './core/clash-api.service';
 import { NativeService } from './core/native.service';
 import { CorePlatform } from './core/platform/core-platform';
+import { ProfileService } from './core/profile.service';
 import { SettingsService } from './core/settings.service';
 import { WindowService } from './core/window.service';
 import { alertText } from './shared/alert-messages';
@@ -46,6 +48,8 @@ export class App {
   private readonly lifecycle = inject(AppLifecycleService);
   private readonly window = inject(WindowService);
   private readonly platform = inject(CorePlatform);
+  private readonly profiles = inject(ProfileService);
+  private readonly clash = inject(ClashApiService);
   readonly native = inject(NativeService);
   readonly taildrop = inject(TaildropService);
   readonly sender = inject(TaildropSendService);
@@ -64,16 +68,26 @@ export class App {
     }
   });
 
-  readonly nav: NavItem[] = [
+  /** Groups is hidden when the profile has no selector/urltest outbounds, except for GLOBAL in global mode. */
+  private readonly showGroups = computed(
+    () =>
+      this.profiles.selectedHasGroups() !== false ||
+      (this.status() === 'started' && this.clash.mode().toLowerCase() === 'global'),
+  );
+
+  readonly nav = computed<NavItem[]>(() => [
     { path: '/dashboard', label: 'Dashboard', icon: 'dashboard' },
-    { path: '/groups', label: 'Groups', icon: 'account_tree' },
+    ...(this.showGroups() ? [{ path: '/groups', label: 'Groups', icon: 'account_tree' }] : []),
     { path: '/connections', label: 'Connections', icon: 'swap_vert' },
     { path: '/log', label: 'Log', icon: 'article' },
     { path: '/tools', label: 'Tools', icon: 'terminal' },
     { path: '/settings', label: 'Settings', icon: 'settings' },
-  ];
+  ]);
 
   constructor() {
+    effect(() => {
+      if (!this.showGroups() && this.router.url.startsWith('/groups')) void this.router.navigateByUrl('/dashboard');
+    });
     // Only explicit drop zones accept files; elsewhere a drop would navigate the webview to the file.
     const ignoreDrop = (event: DragEvent) => {
       if (!event.defaultPrevented) event.preventDefault();

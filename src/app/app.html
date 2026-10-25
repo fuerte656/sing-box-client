@@ -30,7 +30,7 @@
       </a>
     }
     <mat-nav-list>
-      @for (item of nav; track item.path) {
+      @for (item of nav(); track item.path) {
         <a mat-list-item [routerLink]="item.path" routerLinkActive #rla="routerLinkActive" [activated]="rla.isActive">
           <mat-icon matListItemIcon>{{ item.icon }}</mat-icon>
           <span matListItemTitle>{{ item.label }}</span>
