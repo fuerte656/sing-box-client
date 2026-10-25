@@ -5,6 +5,8 @@ screens of SFA (sing-box for Android). Built with [Neutralinojs](https://neutral
 Angular 22 and Angular Material. One codebase builds a small native app for every supported OS;
 the UI runs in the system webview, so there is no bundled Chromium or Node.js.
 
+![Dashboard on Windows](docs/screenshots/dashboard.png)
+
 ## Supported platforms
 
 | OS      | Builds                                     | Webview   | Status |
