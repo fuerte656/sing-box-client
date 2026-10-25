@@ -71,13 +71,7 @@ Desktop integration:
   from sing-box's Clash API; logs come from the process output.
 - **Stop**: sing-box is asked to exit gracefully (CTRL_BREAK on Windows, SIGINT on Linux/macOS) so
   it can restore the system proxy and routes; it is force-killed only if that fails.
-- **TUN** profiles need elevated rights:
-
-  | OS      | What the client does |
-  | ------- | -------------------- |
-  | Windows | Offers to relaunch the client as administrator |
-  | Linux   | Grants the core `cap_net_admin`, `cap_net_raw`, `cap_net_bind_service` via `pkexec setcap` (once per core update) |
-  | macOS   | Offers to relaunch the client as root via an administrator prompt |
+- **TUN** profiles need elevated rights; see [Administrator rights](#administrator-rights).
 
 - **Tools / Taildrop** use sing-box's API service (`daemon.StartedService`, sing-box 1.14+), the
   same API SFA uses through libbox. The client adds an `api` service on 127.0.0.1 with a random
@@ -86,6 +80,35 @@ Desktop integration:
   in a terminal. Message definitions in `src/app/core/daemon/daemon.proto.json` are extracted from
   the sing-box binary: re-run `node scripts/extract-daemon-proto.mjs` after a core update that
   changes the API.
+
+### Administrator rights
+
+The client runs as a normal user. Elevated rights are needed for one thing only: **starting a
+profile with a `tun` inbound**. To capture all traffic, sing-box has to:
+
+- create a virtual network adapter (wintun on Windows, `/dev/net/tun` on Linux, utun on macOS);
+- add routes for it (`auto_route`) and, with `strict_route`, firewall rules that stop traffic and
+  DNS from leaking past it;
+- with `cap_net_bind_service` on Linux, listen on ports below 1024.
+
+Before starting, the client checks whether the core can do this. If it cannot, it shows
+"TUN permission required" with a button:
+
+| OS      | Button | What happens |
+| ------- | ------ | ------------ |
+| Windows | Restart as administrator | UAC prompt, then an elevated copy of the client starts and takes over from the current one (single instance). sing-box runs as its child, so it is elevated too |
+| Linux   | Grant TUN permission | `pkexec setcap cap_net_admin,cap_net_raw,cap_net_bind_service+ep` on the core binary. The client itself stays unprivileged. Needed again after each core update, because the new binary has no capabilities |
+| macOS   | Restart as administrator | Administrator password prompt, then the client is relaunched as root |
+
+Everything else works without elevation: system proxy (a per-user setting), `mixed`/`socks`/`http`
+inbounds on ports above 1024, core updates, Clash API screens, Tailscale and Taildrop.
+
+Things to know when the client runs elevated on Windows:
+
+- Windows blocks drag and drop from a non-elevated Explorer into an elevated window, so the
+  Taildrop drop zone does not accept files; use the file chooser instead.
+- If UAC asks for the credentials of a *different* administrator account, the client runs as that
+  user and uses that user's data folder, profiles and settings.
 
 ### Data folder
 
