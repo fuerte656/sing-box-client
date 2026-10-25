@@ -1,0 +1,86 @@
+<div class="page">
+  <header class="page-header">
+    <h1>Connections</h1>
+    <mat-button-toggle-group [value]="state()" (change)="state.set($event.value)" hideSingleSelectionIndicator>
+      <mat-button-toggle value="active">Active</mat-button-toggle>
+      <mat-button-toggle value="closed">Closed</mat-button-toggle>
+      <mat-button-toggle value="all">All</mat-button-toggle>
+    </mat-button-toggle-group>
+    <button mat-icon-button [matMenuTriggerFor]="sortMenu" matTooltip="Sort">
+      <mat-icon>sort</mat-icon>
+    </button>
+    <mat-menu #sortMenu="matMenu">
+      <button mat-menu-item (click)="sort.set('date')">
+        <mat-icon>{{ sort() === 'date' ? 'radio_button_checked' : 'radio_button_unchecked' }}</mat-icon>
+        <span>Date</span>
+      </button>
+      <button mat-menu-item (click)="sort.set('traffic')">
+        <mat-icon>{{ sort() === 'traffic' ? 'radio_button_checked' : 'radio_button_unchecked' }}</mat-icon>
+        <span>Traffic</span>
+      </button>
+      <button mat-menu-item (click)="sort.set('trafficTotal')">
+        <mat-icon>{{ sort() === 'trafficTotal' ? 'radio_button_checked' : 'radio_button_unchecked' }}</mat-icon>
+        <span>Total traffic</span>
+      </button>
+    </mat-menu>
+    <button
+      mat-icon-button
+      (click)="closeAll()"
+      [disabled]="!clash.activeCount()"
+      matTooltip="Close all connections"
+    >
+      <mat-icon>delete_sweep</mat-icon>
+    </button>
+  </header>
+
+  <mat-form-field appearance="outline" subscriptSizing="dynamic" class="search">
+    <mat-icon matPrefix>search</mat-icon>
+    <input matInput placeholder="Search connections" [ngModel]="query()" (ngModelChange)="query.set($event)" />
+    @if (query()) {
+      <button matSuffix mat-icon-button (click)="query.set('')"><mat-icon>close</mat-icon></button>
+    }
+  </mat-form-field>
+
+  @if (!visible().length) {
+    <div class="empty-state">
+      <mat-icon>swap_vert</mat-icon>
+      <span>
+        @if (query()) {
+          No connections match your search.
+        } @else if (box.status() !== 'started' && state() === 'active') {
+          Start the service to see connections.
+        } @else {
+          No {{ state() === 'all' ? '' : state() }} connections.
+        }
+      </span>
+    </div>
+  } @else {
+    <div class="list">
+      @for (c of visible(); track c.id) {
+        <a class="row" [class.closed]="c.closedAt" [routerLink]="['/connections', c.id]">
+          <div class="main">
+            <span class="target">{{ target(c) }}</span>
+            <span class="meta muted">
+              {{ c.metadata.network }} · {{ c.metadata.type }}
+              @if (processName(c)) {
+                · {{ processName(c) }}
+              }
+              · {{ c.chains.slice().reverse().join(' → ') }}
+            </span>
+          </div>
+          <div class="traffic">
+            @if (!c.closedAt) {
+              <span>↑ {{ c.uploadSpeed | speed }} ↓ {{ c.downloadSpeed | speed }}</span>
+            }
+            <span class="muted">↑ {{ c.upload | bytes }} ↓ {{ c.download | bytes }}</span>
+          </div>
+          @if (!c.closedAt) {
+            <button mat-icon-button (click)="close(c, $event)" matTooltip="Close">
+              <mat-icon>close</mat-icon>
+            </button>
+          }
+        </a>
+      }
+    </div>
+  }
+</div>

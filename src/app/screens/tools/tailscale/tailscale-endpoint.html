@@ -1,0 +1,146 @@
+<div class="page">
+  <header class="page-header">
+    <button mat-icon-button (click)="back()"><mat-icon>arrow_back</mat-icon></button>
+    <h1>Tailscale <span class="muted subtitle">{{ tag() }}</span></h1>
+    @if (running()) {
+      <button mat-icon-button [matMenuTriggerFor]="menu" matTooltip="More options">
+        <mat-icon>more_vert</mat-icon>
+      </button>
+      <mat-menu #menu="matMenu">
+        <button mat-menu-item (click)="logout()">
+          <mat-icon>logout</mat-icon>
+          <span>Log out</span>
+        </button>
+      </mat-menu>
+    }
+  </header>
+
+  @if (status(); as s) {
+    <div class="content">
+      <h2 class="section-title">Status</h2>
+      <div class="group">
+        <div class="item">
+          <mat-icon class="lead">power_settings_new</mat-icon>
+          <div class="text">
+            <span class="title">State</span>
+            <span class="sub" [class.ok]="running()" [class.warn]="!running()">
+              <span class="dot"></span>{{ stateLabel(s) }}
+            </span>
+          </div>
+        </div>
+
+        @if (s.authURL) {
+          <div class="item">
+            <mat-icon class="lead">login</mat-icon>
+            <div class="text">
+              <span class="title">Authentication required</span>
+              <span class="sub muted mono ellipsis">{{ s.authURL }}</span>
+            </div>
+            <button mat-flat-button (click)="openAuthUrl(s.authURL)">Log in</button>
+          </div>
+        }
+
+        @if (s.self; as self) {
+          <a class="item link" [routerLink]="['peer', self.stableID]">
+            <mat-icon class="lead">laptop_windows</mat-icon>
+            <div class="text">
+              <span class="title">This device</span>
+              <span class="sub muted">{{ title(self) }}{{ ip(self) ? ' · ' + ip(self) : '' }}</span>
+            </div>
+            <mat-icon class="trail">chevron_right</mat-icon>
+          </a>
+        }
+
+        @if (running()) {
+          <div class="item">
+            <mat-icon class="lead">router</mat-icon>
+            <div class="text">
+              <span class="title">Exit node</span>
+            </div>
+            <mat-form-field appearance="outline" subscriptSizing="dynamic" class="exit-node">
+              <mat-select
+                [value]="selectedExitNode()"
+                (selectionChange)="setExitNode($event.value)"
+                [disabled]="exitNodeBusy()"
+                panelWidth=""
+              >
+                <mat-select-trigger>{{ selectedExitNodeLabel() }}</mat-select-trigger>
+                <mat-option value="">
+                  <span class="option-title">None</span>
+                  <span class="option-sub muted">Use this device's own connection</span>
+                </mat-option>
+                @for (peer of exitNodeOptions(); track peer.stableID) {
+                  <mat-option [value]="peer.stableID" [disabled]="!peer.online">
+                    <span class="option-title"><span class="dot" [class.online]="peer.online"></span>{{ title(peer) }}</span>
+                    <span class="option-sub muted mono">{{ ip(peer) }}{{ peer.online ? '' : ' · offline' }}</span>
+                  </mat-option>
+                }
+              </mat-select>
+            </mat-form-field>
+            @if (exitNodeBusy()) {
+              <mat-spinner diameter="20" />
+            }
+          </div>
+        }
+
+        @if (running() && s.canShareFiles) {
+          <a class="item link" routerLink="taildrop">
+            <mat-icon class="lead">move_to_inbox</mat-icon>
+            <div class="text">
+              <span class="title">Taildrop</span>
+              <span class="sub muted">
+                @if (s.receivingFileCount) {
+                  Receiving {{ s.receivingFileCount }} ·
+                }
+                {{ s.waitingFileCount }} received
+                @if (s.unreadFileCount) {
+                  · {{ s.unreadFileCount }} new
+                }
+              </span>
+            </div>
+            @if (s.unreadFileCount) {
+              <span class="badge">{{ s.unreadFileCount }}</span>
+            }
+            <mat-icon class="trail">chevron_right</mat-icon>
+          </a>
+        }
+      </div>
+
+      @for (group of s.userGroups; track group.userID) {
+        <h2 class="section-title">{{ group.displayName || group.loginName || s.networkName }}</h2>
+        <div class="group">
+          @for (peer of sorted(group.peers); track peer.stableID) {
+            <a class="item link peer" [routerLink]="['peer', peer.stableID]">
+              <span class="dot" [class.online]="peer.online"></span>
+              <div class="text">
+                <span class="title">{{ title(peer) }}</span>
+                <span class="sub muted mono">{{ ip(peer) ?? peer.tailscaleIPs[0] }}</span>
+                <span class="chips">
+                  @if (peer.exitNode) {
+                    <span class="chip primary">Exit node · active</span>
+                  } @else if (peer.exitNodeOption) {
+                    <span class="chip primary">Exit node</span>
+                  }
+                  @if (keyBadge(peer); as badge) {
+                    <span class="chip" [class.error]="peer.expired">{{ badge }}</span>
+                  }
+                  @if (peer.shareeNode) {
+                    <span class="chip">Shared in</span>
+                  }
+                </span>
+              </div>
+              <mat-icon class="trail">chevron_right</mat-icon>
+            </a>
+          } @empty {
+            <div class="item muted">No devices</div>
+          }
+        </div>
+      }
+    </div>
+  } @else {
+    <div class="empty-state">
+      <mat-icon>hub</mat-icon>
+      <span>Tailscale endpoint "{{ tag() }}" is not available. Is the service running?</span>
+    </div>
+  }
+</div>

@@ -1,0 +1,26 @@
+:host {
+  display: contents;
+}
+
+.page {
+  overflow: hidden;
+}
+
+.mode {
+  font: var(--mat-sys-body-medium);
+  margin-left: 8px;
+}
+
+.hint {
+  margin: 0 0 8px;
+  font: var(--mat-sys-body-small);
+}
+
+mat-progress-bar {
+  margin-bottom: 8px;
+}
+
+.editor {
+  flex: 1;
+  min-height: 0;
+}

@@ -1,0 +1,74 @@
+:host {
+  display: contents;
+}
+
+.page {
+  position: relative;
+  overflow-y: auto;
+  padding-bottom: 96px;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 16px;
+}
+
+.wide {
+  grid-column: 1 / -1;
+}
+
+.stat-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font: var(--mat-sys-label-large);
+  color: var(--mat-sys-on-surface-variant);
+
+  mat-icon {
+    font-size: 18px;
+    width: 18px;
+    height: 18px;
+  }
+}
+
+.stat-value {
+  font: var(--mat-sys-headline-small);
+  margin-top: 8px;
+}
+
+.stat-sub {
+  font: var(--mat-sys-body-small);
+  margin-bottom: 8px;
+}
+
+.modes {
+  margin-top: 12px;
+  width: 100%;
+
+  mat-button-toggle {
+    flex: 1;
+  }
+}
+
+.toggle-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 48px;
+}
+
+.clickable {
+  cursor: pointer;
+}
+
+.fab {
+  position: fixed;
+  right: 32px;
+  bottom: 32px;
+
+  &.running {
+    --mat-fab-container-color: var(--mat-sys-error-container);
+    --mat-fab-foreground-color: var(--mat-sys-on-error-container);
+  }
+}

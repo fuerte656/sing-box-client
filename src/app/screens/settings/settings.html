@@ -1,0 +1,247 @@
+<div class="page">
+  <header class="page-header">
+    <h1>Settings</h1>
+  </header>
+
+  <div class="sections">
+    <!-- Core -->
+    <mat-card appearance="outlined">
+      <mat-card-header>
+        <mat-icon mat-card-avatar>deployed_code</mat-icon>
+        <mat-card-title>Core</mat-card-title>
+        <mat-card-subtitle>sing-box binary in the data folder</mat-card-subtitle>
+      </mat-card-header>
+      <mat-card-content>
+        <div class="row">
+          <div class="row-text">
+            <span class="row-title">Version</span>
+            <span class="row-sub muted">
+              {{ core.version() ?? 'Not installed' }}
+              @if (latest(); as l) {
+                · latest {{ l.version }}
+              }
+            </span>
+          </div>
+        </div>
+        <div class="row">
+          <div class="row-text">
+            <span class="row-title">Path</span>
+            <span class="row-sub mono path">{{ core.binaryPath() || '—' }}</span>
+          </div>
+          <button mat-icon-button (click)="copyCorePath()" [disabled]="!core.binaryPath()" matTooltip="Copy path">
+            <mat-icon>content_copy</mat-icon>
+          </button>
+          <button mat-icon-button (click)="openCoreDir()" matTooltip="Open folder">
+            <mat-icon>folder_open</mat-icon>
+          </button>
+          <button mat-flat-button (click)="updateCore()" [disabled]="updating()">
+            <mat-icon>download</mat-icon>
+            {{ core.version() ? 'Update' : 'Install' }}
+          </button>
+        </div>
+        @if (updating()) {
+          <div class="progress">
+            <span class="muted">{{ stageLabel() }}</span>
+            <mat-progress-bar mode="indeterminate" />
+          </div>
+        }
+        <button mat-button class="link" (click)="openReleases()">
+          <mat-icon>open_in_new</mat-icon> Release notes
+        </button>
+      </mat-card-content>
+    </mat-card>
+
+    <!-- Service -->
+    <mat-card appearance="outlined">
+      <mat-card-header>
+        <mat-icon mat-card-avatar>vpn_lock</mat-icon>
+        <mat-card-title>Service</mat-card-title>
+      </mat-card-header>
+      <mat-card-content>
+        <div class="row">
+          <div class="row-text">
+            <span class="row-title">Start on launch</span>
+            <span class="row-sub muted">Start the service when the app opens</span>
+          </div>
+          <mat-slide-toggle
+            [checked]="settings.values().autoStart"
+            (change)="settings.set('autoStart', $event.checked)"
+          />
+        </div>
+        <div class="row">
+          <div class="row-text">
+            <span class="row-title">System HTTP proxy</span>
+            <span class="row-sub muted">
+              Apply set_system_proxy on mixed/http inbounds that request it
+            </span>
+          </div>
+          <mat-slide-toggle [checked]="settings.values().systemProxyEnabled" (change)="setSystemProxy($event.checked)" />
+        </div>
+        <div class="row">
+          <div class="row-text">
+            <span class="row-title">Clash API port</span>
+            <span class="row-sub muted">
+              Used on 127.0.0.1 when the profile does not configure experimental.clash_api
+            </span>
+          </div>
+          <mat-form-field appearance="outline" subscriptSizing="dynamic" class="small-field">
+            <input
+              matInput
+              type="number"
+              min="1"
+              max="65535"
+              [value]="settings.values().clashApiPort"
+              (change)="setClashApiPort($any($event.target).value)"
+            />
+          </mat-form-field>
+        </div>
+        <div class="row">
+          <div class="row-text">
+            <span class="row-title">API service port</span>
+            <span class="row-sub muted">
+              sing-box API service used by Tools (Tailscale), on 127.0.0.1; requires sing-box 1.14+
+            </span>
+          </div>
+          <mat-form-field appearance="outline" subscriptSizing="dynamic" class="small-field">
+            <input
+              matInput
+              type="number"
+              min="1"
+              max="65535"
+              [value]="settings.values().apiServicePort"
+              (change)="setApiServicePort($any($event.target).value)"
+            />
+          </mat-form-field>
+        </div>
+      </mat-card-content>
+    </mat-card>
+
+    <!-- App -->
+    <mat-card appearance="outlined">
+      <mat-card-header>
+        <mat-icon mat-card-avatar>tune</mat-icon>
+        <mat-card-title>App</mat-card-title>
+      </mat-card-header>
+      <mat-card-content>
+        <div class="row">
+          <div class="row-text"><span class="row-title">Theme</span></div>
+          <mat-button-toggle-group
+            [value]="settings.values().theme"
+            (change)="setTheme($event.value)"
+            hideSingleSelectionIndicator
+          >
+            <mat-button-toggle value="system">System</mat-button-toggle>
+            <mat-button-toggle value="light">Light</mat-button-toggle>
+            <mat-button-toggle value="dark">Dark</mat-button-toggle>
+          </mat-button-toggle-group>
+        </div>
+        <div class="row">
+          <div class="row-text">
+            <span class="row-title">Close to tray</span>
+            <span class="row-sub muted">Keep running in the system tray when the window is closed</span>
+          </div>
+          <mat-slide-toggle
+            [checked]="settings.values().closeToTray"
+            (change)="settings.set('closeToTray', $event.checked)"
+          />
+        </div>
+        <div class="row">
+          <div class="row-text">
+            <span class="row-title">Start minimized</span>
+            <span class="row-sub muted">Launch into the system tray without showing the window</span>
+          </div>
+          <mat-slide-toggle
+            [checked]="settings.values().startMinimized"
+            [disabled]="!settings.values().closeToTray"
+            (change)="settings.set('startMinimized', $event.checked)"
+          />
+        </div>
+        <div class="row">
+          <div class="row-text">
+            <span class="row-title">Notifications</span>
+            <span class="row-sub muted">Show service alerts as desktop notifications while the window is hidden</span>
+          </div>
+          <mat-slide-toggle
+            [checked]="settings.values().notifications"
+            (change)="settings.set('notifications', $event.checked)"
+          />
+        </div>
+        <div class="row">
+          <div class="row-text">
+            <span class="row-title">Log buffer</span>
+            <span class="row-sub muted">Maximum lines kept on the Log screen</span>
+          </div>
+          <mat-form-field appearance="outline" subscriptSizing="dynamic" class="small-field">
+            <input
+              matInput
+              type="number"
+              min="100"
+              step="500"
+              [value]="settings.values().logMaxLines"
+              (change)="settings.set('logMaxLines', +$any($event.target).value)"
+            />
+          </mat-form-field>
+        </div>
+        <div class="row column">
+          <span class="row-title">Dashboard items</span>
+          <div class="cards">
+            @for (card of cards; track card) {
+              <mat-checkbox
+                [checked]="settings.values().dashboardCards.includes(card)"
+                (change)="toggleCard(card, $event.checked)"
+              >
+                {{ cardLabels[card] }}
+              </mat-checkbox>
+            }
+          </div>
+        </div>
+      </mat-card-content>
+    </mat-card>
+
+    <!-- Data -->
+    <mat-card appearance="outlined">
+      <mat-card-header>
+        <mat-icon mat-card-avatar>folder</mat-icon>
+        <mat-card-title>Data</mat-card-title>
+      </mat-card-header>
+      <mat-card-content>
+        <div class="row">
+          <div class="row-text">
+            <span class="row-title">Data folder</span>
+            <span class="row-sub mono path">{{ dataDir() || '—' }}</span>
+          </div>
+          <button mat-icon-button (click)="openDataDir()" matTooltip="Open folder">
+            <mat-icon>folder_open</mat-icon>
+          </button>
+        </div>
+        <div class="row">
+          <div class="row-text">
+            <span class="row-title">Working directory</span>
+            <span class="row-sub muted">
+              Cache and rule-sets: {{ workDirSize() === null ? 'calculating…' : (workDirSize() | bytes) }}
+            </span>
+          </div>
+          <button mat-stroked-button (click)="clearWorkDir()">Clear</button>
+        </div>
+      </mat-card-content>
+    </mat-card>
+
+    <!-- About -->
+    <mat-card appearance="outlined">
+      <mat-card-header>
+        <mat-icon mat-card-avatar>info</mat-icon>
+        <mat-card-title>About</mat-card-title>
+      </mat-card-header>
+      <mat-card-content>
+        <div class="row">
+          <div class="row-text">
+            <span class="row-title">sing-box client</span>
+            <span class="row-sub muted">
+              Version {{ appVersion }} · Neutralinojs {{ neutralinoVersion }} · {{ platform.id }}
+            </span>
+          </div>
+        </div>
+      </mat-card-content>
+    </mat-card>
+  </div>
+</div>

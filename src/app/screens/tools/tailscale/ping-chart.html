@@ -1,0 +1,121 @@
+<div class="stats">
+  <div class="stat">
+    <span class="label">Last</span>
+    <span class="value">
+      @if (stats().last; as last) {
+        {{ last.error ? 'Failed' : ms(last.latencyMs) + ' ms' }}
+      } @else {
+        –
+      }
+    </span>
+  </div>
+  <div class="stat">
+    <span class="label">Min</span>
+    <span class="value">{{ ms(stats().min) }}<small> ms</small></span>
+  </div>
+  <div class="stat">
+    <span class="label">Avg</span>
+    <span class="value">{{ ms(stats().avg) }}<small> ms</small></span>
+  </div>
+  <div class="stat">
+    <span class="label">Max</span>
+    <span class="value">{{ ms(stats().max) }}<small> ms</small></span>
+  </div>
+  <div class="stat">
+    <span class="label">Loss</span>
+    <span class="value">{{ stats().loss === null ? '–' : stats().loss!.toFixed(0) }}<small> %</small></span>
+  </div>
+  <div class="stat wide">
+    <span class="label">Path</span>
+    <span class="value path-value">{{ stats().last ? path(stats().last!) : '–' }}</span>
+  </div>
+  <button
+    mat-icon-button
+    class="table-toggle"
+    (click)="showTable.set(!showTable())"
+    [matTooltip]="showTable() ? 'Show chart' : 'Show table'"
+  >
+    <mat-icon>{{ showTable() ? 'show_chart' : 'table_rows' }}</mat-icon>
+  </button>
+</div>
+
+<div class="plot" [hidden]="showTable()">
+  <svg
+    [attr.width]="width()"
+    [attr.height]="height"
+    role="img"
+    [attr.aria-label]="summary()"
+    (pointermove)="onPointerMove($event)"
+    (pointerleave)="hover.set(null)"
+  >
+    <!-- Recessive hairline grid with clean ms ticks -->
+    @for (tick of yTicks(); track tick) {
+      <line class="grid" [attr.x1]="pad.left" [attr.x2]="width() - pad.right" [attr.y1]="y(tick)" [attr.y2]="y(tick)" />
+      <text class="tick" [attr.x]="pad.left - 8" [attr.y]="y(tick)" text-anchor="end" dominant-baseline="middle">
+        {{ tick }} ms
+      </text>
+    }
+    <text class="tick" [attr.x]="pad.left" [attr.y]="height - 4">older</text>
+    <text class="tick" [attr.x]="width() - pad.right" [attr.y]="height - 4" text-anchor="end">now</text>
+
+    <!-- Failed pings: status marker on the baseline (the × is the icon, not color alone) -->
+    @for (fx of failures(); track $index) {
+      <g class="failure" [attr.transform]="'translate(' + fx + ',' + baseline + ')'">
+        <circle r="6" />
+        <path d="M-3,-3 L3,3 M3,-3 L-3,3" />
+      </g>
+    }
+
+    <path class="line" [attr.d]="linePath()" />
+
+    @if (lastPoint(); as p) {
+      <circle class="end-dot" [attr.cx]="p.x" [attr.cy]="p.y" r="4" />
+    }
+
+    @if (hovered(); as h) {
+      <line class="crosshair" [attr.x1]="h.x" [attr.x2]="h.x" [attr.y1]="pad.top" [attr.y2]="baseline" />
+      @if (!h.s.error) {
+        <circle class="hover-dot" [attr.cx]="h.x" [attr.cy]="h.y" r="4" />
+      }
+    }
+  </svg>
+
+  @if (hovered(); as h) {
+    <div class="tooltip" [style.left.px]="h.x" [class.flip]="h.flip">
+      <strong>{{ h.s.error ? 'Failed' : h.s.latencyMs.toFixed(1) + ' ms' }}</strong>
+      <span>{{ path(h.s) }}</span>
+      <span class="muted">{{ h.s.at | date: 'mediumTime' }}</span>
+    </div>
+  }
+
+  @if (!samples().length) {
+    <div class="empty muted">{{ active() ? 'Connecting…' : 'Press Start to measure latency' }}</div>
+  }
+</div>
+
+@if (showTable()) {
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Time</th>
+          <th class="num">Latency</th>
+          <th>Path</th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (s of samples().slice().reverse(); track s.at) {
+          <tr>
+            <td>{{ s.at | date: 'mediumTime' }}</td>
+            <td class="num">{{ s.error ? '—' : s.latencyMs.toFixed(1) + ' ms' }}</td>
+            <td>{{ path(s) }}</td>
+          </tr>
+        } @empty {
+          <tr>
+            <td colspan="3" class="muted">No ping data yet</td>
+          </tr>
+        }
+      </tbody>
+    </table>
+  </div>
+}

@@ -1,0 +1,68 @@
+<div class="page">
+  <header class="page-header">
+    <h1>Groups</h1>
+    @if (box.status() === 'started') {
+      <button mat-icon-button (click)="reload()" [disabled]="loading()" matTooltip="Refresh">
+        <mat-icon>refresh</mat-icon>
+      </button>
+    }
+  </header>
+
+  @if (box.status() !== 'started') {
+    <div class="empty-state">
+      <mat-icon>account_tree</mat-icon>
+      <span>Start the service to manage outbound groups.</span>
+    </div>
+  } @else if (!groups().length && !loading()) {
+    <div class="empty-state">
+      <mat-icon>account_tree</mat-icon>
+      <span>This profile has no selector or URL-test groups.</span>
+    </div>
+  } @else {
+    <mat-accordion multi class="groups">
+      @for (group of groups(); track group.name) {
+        <mat-expansion-panel [expanded]="expanded.has(group.name)" (expandedChange)="toggle(group.name, $event)">
+          <mat-expansion-panel-header>
+            <mat-panel-title>
+              <div class="group-title">
+                <span class="group-name">{{ group.name }}</span>
+                <span class="group-meta muted">{{ group.type }} · {{ group.items.length }} · {{ group.selected }}</span>
+              </div>
+            </mat-panel-title>
+            <mat-panel-description>
+              @if (testing().has(group.name)) {
+                <mat-spinner diameter="20" />
+              } @else {
+                <button mat-icon-button (click)="test(group, $event)" matTooltip="URL test">
+                  <mat-icon>bolt</mat-icon>
+                </button>
+              }
+            </mat-panel-description>
+          </mat-expansion-panel-header>
+
+          <div class="items">
+            @for (item of group.items; track item.name) {
+              <button
+                type="button"
+                class="item"
+                [class.selected]="item.name === group.selected"
+                [class.readonly]="!group.selectable"
+                (click)="select(group, item)"
+              >
+                <span class="item-name">{{ item.name }}</span>
+                <span class="item-row">
+                  <span class="item-type muted">{{ item.type }}</span>
+                  @if (item.delay !== null) {
+                    <span class="delay" [class]="delayClass(item.delay)">
+                      {{ item.delay === 0 ? 'Timeout' : item.delay + ' ms' }}
+                    </span>
+                  }
+                </span>
+              </button>
+            }
+          </div>
+        </mat-expansion-panel>
+      }
+    </mat-accordion>
+  }
+</div>

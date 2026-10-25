@@ -1,0 +1,89 @@
+<div class="page">
+  <header class="page-header">
+    <h1>Dashboard</h1>
+    @if (profiles.selected(); as profile) {
+      <span class="muted">{{ profile.name }}</span>
+    }
+  </header>
+
+  <div class="grid">
+    @if (running()) {
+      @if (cards().has('upload')) {
+        <mat-card appearance="outlined">
+          <mat-card-content>
+            <div class="stat-label"><mat-icon>arrow_upward</mat-icon> Upload</div>
+            <div class="stat-value">{{ clash.uploadSpeed() | speed }}</div>
+            <div class="stat-sub muted">Total {{ clash.uploadTotal() | bytes }}</div>
+            <app-sparkline [values]="clash.uploadHistory()" />
+          </mat-card-content>
+        </mat-card>
+      }
+      @if (cards().has('download')) {
+        <mat-card appearance="outlined">
+          <mat-card-content>
+            <div class="stat-label"><mat-icon>arrow_downward</mat-icon> Download</div>
+            <div class="stat-value">{{ clash.downloadSpeed() | speed }}</div>
+            <div class="stat-sub muted">Total {{ clash.downloadTotal() | bytes }}</div>
+            <app-sparkline [values]="clash.downloadHistory()" />
+          </mat-card-content>
+        </mat-card>
+      }
+      @if (cards().has('connections')) {
+        <mat-card appearance="outlined" class="clickable" routerLink="/connections">
+          <mat-card-content>
+            <div class="stat-label"><mat-icon>swap_vert</mat-icon> Connections</div>
+            <div class="stat-value">{{ clash.activeCount() }}</div>
+            <div class="stat-sub muted">Memory {{ clash.memory() | bytes }}</div>
+          </mat-card-content>
+        </mat-card>
+      }
+      @if (cards().has('clashMode') && clash.modeList().length > 1) {
+        <mat-card appearance="outlined">
+          <mat-card-content>
+            <div class="stat-label"><mat-icon>alt_route</mat-icon> Mode</div>
+            <mat-button-toggle-group
+              class="modes"
+              [value]="clash.mode()"
+              (change)="setMode($event.value)"
+              hideSingleSelectionIndicator
+            >
+              @for (mode of clash.modeList(); track mode) {
+                <mat-button-toggle [value]="mode">{{ mode }}</mat-button-toggle>
+              }
+            </mat-button-toggle-group>
+          </mat-card-content>
+        </mat-card>
+      }
+      @if (cards().has('systemProxy') && box.systemProxy().available) {
+        <mat-card appearance="outlined">
+          <mat-card-content class="toggle-card">
+            <div class="stat-label"><mat-icon>language</mat-icon> System HTTP proxy</div>
+            <mat-slide-toggle [checked]="box.systemProxy().enabled" (change)="setSystemProxy($event.checked)" />
+          </mat-card-content>
+        </mat-card>
+      }
+    }
+
+    @if (cards().has('profiles')) {
+      <div class="wide">
+        <app-profiles-card />
+      </div>
+    }
+  </div>
+
+  <button
+    mat-fab
+    extended
+    class="fab"
+    [class.running]="running()"
+    [disabled]="busy()"
+    (click)="box.toggle()"
+  >
+    @if (busy()) {
+      <mat-spinner diameter="20" />
+    } @else {
+      <mat-icon>{{ running() ? 'stop' : 'play_arrow' }}</mat-icon>
+    }
+    {{ running() ? 'Stop' : box.status() === 'starting' ? 'Starting' : box.status() === 'stopping' ? 'Stopping' : 'Start' }}
+  </button>
+</div>

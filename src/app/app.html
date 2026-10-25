@@ -1,0 +1,28 @@
+<mat-sidenav-container class="shell">
+  <mat-sidenav mode="side" opened disableClose class="rail">
+    <div class="brand">
+      <span class="status-dot" [attr.data-status]="status()"></span>
+      <div class="brand-text">
+        <span class="title">sing-box</span>
+        <span class="subtitle">{{ statusLabel() }}</span>
+      </div>
+    </div>
+    <mat-nav-list>
+      @for (item of nav; track item.path) {
+        <a mat-list-item [routerLink]="item.path" routerLinkActive #rla="routerLinkActive" [activated]="rla.isActive">
+          <mat-icon matListItemIcon>{{ item.icon }}</mat-icon>
+          <span matListItemTitle>{{ item.label }}</span>
+        </a>
+      }
+    </mat-nav-list>
+  </mat-sidenav>
+  <mat-sidenav-content class="content">
+    @if (!native.available) {
+      <div class="banner">
+        <mat-icon>warning</mat-icon>
+        Running outside Neutralino: native features are unavailable. Start the app with <code>npm run dev</code>.
+      </div>
+    }
+    <router-outlet />
+  </mat-sidenav-content>
+</mat-sidenav-container>

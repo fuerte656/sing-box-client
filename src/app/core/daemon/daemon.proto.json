@@ -1,0 +1,2426 @@
+{
+ "source": "daemon/started_service.proto from sing-box.exe",
+ "nested": {
+  "google": {
+   "nested": {
+    "protobuf": {
+     "nested": {
+      "Empty": {
+       "edition": "proto2",
+       "fields": {}
+      }
+     }
+    }
+   }
+  },
+  "daemon": {
+   "options": {
+    "go_package": "github.com/sagernet/sing-box/daemon"
+   },
+   "nested": {
+    "Version": {
+     "fields": {
+      "version": {
+       "type": "string",
+       "id": 1
+      },
+      "apiVersion": {
+       "type": "int32",
+       "id": 2
+      }
+     }
+    },
+    "ServiceStatus": {
+     "fields": {
+      "status": {
+       "type": ".daemon.ServiceStatus.Type",
+       "id": 1
+      },
+      "errorMessage": {
+       "type": "string",
+       "id": 2
+      }
+     },
+     "nested": {
+      "Type": {
+       "values": {
+        "IDLE": 0,
+        "STARTING": 1,
+        "STARTED": 2,
+        "STOPPING": 3,
+        "FATAL": 4
+       }
+      }
+     }
+    },
+    "SubscribeStatusRequest": {
+     "fields": {
+      "interval": {
+       "type": "int64",
+       "id": 1
+      }
+     }
+    },
+    "Log": {
+     "fields": {
+      "messages": {
+       "rule": "repeated",
+       "type": ".daemon.Log.Message",
+       "id": 1
+      },
+      "reset": {
+       "type": "bool",
+       "id": 2
+      }
+     },
+     "nested": {
+      "Message": {
+       "fields": {
+        "level": {
+         "type": ".daemon.LogLevel",
+         "id": 1
+        },
+        "message": {
+         "type": "string",
+         "id": 2
+        }
+       }
+      }
+     }
+    },
+    "DefaultLogLevel": {
+     "fields": {
+      "level": {
+       "type": ".daemon.LogLevel",
+       "id": 1
+      }
+     }
+    },
+    "Status": {
+     "fields": {
+      "memory": {
+       "type": "uint64",
+       "id": 1
+      },
+      "goroutines": {
+       "type": "int32",
+       "id": 2
+      },
+      "connectionsIn": {
+       "type": "int32",
+       "id": 3
+      },
+      "connectionsOut": {
+       "type": "int32",
+       "id": 4
+      },
+      "trafficAvailable": {
+       "type": "bool",
+       "id": 5
+      },
+      "uplink": {
+       "type": "int64",
+       "id": 6
+      },
+      "downlink": {
+       "type": "int64",
+       "id": 7
+      },
+      "uplinkTotal": {
+       "type": "int64",
+       "id": 8
+      },
+      "downlinkTotal": {
+       "type": "int64",
+       "id": 9
+      }
+     }
+    },
+    "Groups": {
+     "fields": {
+      "group": {
+       "rule": "repeated",
+       "type": ".daemon.Group",
+       "id": 1
+      }
+     }
+    },
+    "Group": {
+     "fields": {
+      "tag": {
+       "type": "string",
+       "id": 1
+      },
+      "type": {
+       "type": "string",
+       "id": 2
+      },
+      "selectable": {
+       "type": "bool",
+       "id": 3
+      },
+      "selected": {
+       "type": "string",
+       "id": 4
+      },
+      "isExpand": {
+       "type": "bool",
+       "id": 5
+      },
+      "items": {
+       "rule": "repeated",
+       "type": ".daemon.GroupItem",
+       "id": 6
+      }
+     }
+    },
+    "GroupItem": {
+     "fields": {
+      "tag": {
+       "type": "string",
+       "id": 1
+      },
+      "type": {
+       "type": "string",
+       "id": 2
+      },
+      "urlTestTime": {
+       "type": "int64",
+       "id": 3
+      },
+      "urlTestDelay": {
+       "type": "int32",
+       "id": 4
+      }
+     }
+    },
+    "URLTestRequest": {
+     "fields": {
+      "outboundTag": {
+       "type": "string",
+       "id": 1
+      }
+     }
+    },
+    "SelectOutboundRequest": {
+     "fields": {
+      "groupTag": {
+       "type": "string",
+       "id": 1
+      },
+      "outboundTag": {
+       "type": "string",
+       "id": 2
+      }
+     }
+    },
+    "SetGroupExpandRequest": {
+     "fields": {
+      "groupTag": {
+       "type": "string",
+       "id": 1
+      },
+      "isExpand": {
+       "type": "bool",
+       "id": 2
+      }
+     }
+    },
+    "ClashMode": {
+     "fields": {
+      "mode": {
+       "type": "string",
+       "id": 3
+      }
+     }
+    },
+    "ClashModeStatus": {
+     "fields": {
+      "modeList": {
+       "rule": "repeated",
+       "type": "string",
+       "id": 1
+      },
+      "currentMode": {
+       "type": "string",
+       "id": 2
+      }
+     }
+    },
+    "SubscribeConnectionsRequest": {
+     "fields": {
+      "interval": {
+       "type": "int64",
+       "id": 1
+      }
+     }
+    },
+    "ConnectionEvent": {
+     "fields": {
+      "type": {
+       "type": ".daemon.ConnectionEventType",
+       "id": 1
+      },
+      "id": {
+       "type": "string",
+       "id": 2
+      },
+      "connection": {
+       "type": ".daemon.Connection",
+       "id": 3
+      },
+      "uplinkDelta": {
+       "type": "int64",
+       "id": 4
+      },
+      "downlinkDelta": {
+       "type": "int64",
+       "id": 5
+      },
+      "closedAt": {
+       "type": "int64",
+       "id": 6
+      }
+     }
+    },
+    "ConnectionEvents": {
+     "fields": {
+      "events": {
+       "rule": "repeated",
+       "type": ".daemon.ConnectionEvent",
+       "id": 1
+      },
+      "reset": {
+       "type": "bool",
+       "id": 2
+      }
+     }
+    },
+    "Connection": {
+     "fields": {
+      "id": {
+       "type": "string",
+       "id": 1
+      },
+      "inbound": {
+       "type": "string",
+       "id": 2
+      },
+      "inboundType": {
+       "type": "string",
+       "id": 3
+      },
+      "ipVersion": {
+       "type": "int32",
+       "id": 4
+      },
+      "network": {
+       "type": "string",
+       "id": 5
+      },
+      "source": {
+       "type": "string",
+       "id": 6
+      },
+      "destination": {
+       "type": "string",
+       "id": 7
+      },
+      "domain": {
+       "type": "string",
+       "id": 8
+      },
+      "protocol": {
+       "type": "string",
+       "id": 9
+      },
+      "user": {
+       "type": "string",
+       "id": 10
+      },
+      "fromOutbound": {
+       "type": "string",
+       "id": 11
+      },
+      "createdAt": {
+       "type": "int64",
+       "id": 12
+      },
+      "closedAt": {
+       "type": "int64",
+       "id": 13
+      },
+      "uplink": {
+       "type": "int64",
+       "id": 14
+      },
+      "downlink": {
+       "type": "int64",
+       "id": 15
+      },
+      "uplinkTotal": {
+       "type": "int64",
+       "id": 16
+      },
+      "downlinkTotal": {
+       "type": "int64",
+       "id": 17
+      },
+      "rule": {
+       "type": "string",
+       "id": 18
+      },
+      "outbound": {
+       "type": "string",
+       "id": 19
+      },
+      "outboundType": {
+       "type": "string",
+       "id": 20
+      },
+      "chainList": {
+       "rule": "repeated",
+       "type": "string",
+       "id": 21
+      },
+      "processInfo": {
+       "type": ".daemon.ProcessInfo",
+       "id": 22
+      }
+     }
+    },
+    "ProcessInfo": {
+     "fields": {
+      "processId": {
+       "type": "uint32",
+       "id": 1
+      },
+      "userId": {
+       "type": "int32",
+       "id": 2
+      },
+      "userName": {
+       "type": "string",
+       "id": 3
+      },
+      "processPath": {
+       "type": "string",
+       "id": 4
+      },
+      "packageNames": {
+       "rule": "repeated",
+       "type": "string",
+       "id": 5
+      }
+     }
+    },
+    "CloseConnectionRequest": {
+     "fields": {
+      "id": {
+       "type": "string",
+       "id": 1
+      }
+     }
+    },
+    "DeprecatedWarnings": {
+     "fields": {
+      "warnings": {
+       "rule": "repeated",
+       "type": ".daemon.DeprecatedWarning",
+       "id": 1
+      }
+     }
+    },
+    "DeprecatedWarning": {
+     "fields": {
+      "message": {
+       "type": "string",
+       "id": 1
+      },
+      "impending": {
+       "type": "bool",
+       "id": 2
+      },
+      "migrationLink": {
+       "type": "string",
+       "id": 3
+      },
+      "description": {
+       "type": "string",
+       "id": 4
+      },
+      "deprecatedVersion": {
+       "type": "string",
+       "id": 5
+      },
+      "scheduledVersion": {
+       "type": "string",
+       "id": 6
+      }
+     }
+    },
+    "StartedAt": {
+     "fields": {
+      "startedAt": {
+       "type": "int64",
+       "id": 1
+      }
+     }
+    },
+    "OutboundList": {
+     "fields": {
+      "outbounds": {
+       "rule": "repeated",
+       "type": ".daemon.GroupItem",
+       "id": 1
+      }
+     }
+    },
+    "NetworkQualityTestRequest": {
+     "fields": {
+      "configURL": {
+       "type": "string",
+       "id": 1
+      },
+      "outboundTag": {
+       "type": "string",
+       "id": 2
+      },
+      "serial": {
+       "type": "bool",
+       "id": 3
+      },
+      "maxRuntimeSeconds": {
+       "type": "int32",
+       "id": 4
+      },
+      "http3": {
+       "type": "bool",
+       "id": 5
+      }
+     }
+    },
+    "NetworkQualityTestProgress": {
+     "fields": {
+      "phase": {
+       "type": "int32",
+       "id": 1
+      },
+      "downloadCapacity": {
+       "type": "int64",
+       "id": 2
+      },
+      "uploadCapacity": {
+       "type": "int64",
+       "id": 3
+      },
+      "downloadRPM": {
+       "type": "int32",
+       "id": 4
+      },
+      "uploadRPM": {
+       "type": "int32",
+       "id": 5
+      },
+      "idleLatencyMs": {
+       "type": "int32",
+       "id": 6
+      },
+      "elapsedMs": {
+       "type": "int64",
+       "id": 7
+      },
+      "isFinal": {
+       "type": "bool",
+       "id": 8
+      },
+      "error": {
+       "type": "string",
+       "id": 9
+      },
+      "downloadCapacityAccuracy": {
+       "type": "int32",
+       "id": 10
+      },
+      "uploadCapacityAccuracy": {
+       "type": "int32",
+       "id": 11
+      },
+      "downloadRPMAccuracy": {
+       "type": "int32",
+       "id": 12
+      },
+      "uploadRPMAccuracy": {
+       "type": "int32",
+       "id": 13
+      }
+     }
+    },
+    "STUNTestRequest": {
+     "fields": {
+      "server": {
+       "type": "string",
+       "id": 1
+      },
+      "outboundTag": {
+       "type": "string",
+       "id": 2
+      }
+     }
+    },
+    "STUNTestProgress": {
+     "fields": {
+      "phase": {
+       "type": "int32",
+       "id": 1
+      },
+      "externalAddr": {
+       "type": "string",
+       "id": 2
+      },
+      "latencyMs": {
+       "type": "int32",
+       "id": 3
+      },
+      "natMapping": {
+       "type": "int32",
+       "id": 4
+      },
+      "natFiltering": {
+       "type": "int32",
+       "id": 5
+      },
+      "isFinal": {
+       "type": "bool",
+       "id": 6
+      },
+      "error": {
+       "type": "string",
+       "id": 7
+      },
+      "natTypeSupported": {
+       "type": "bool",
+       "id": 8
+      }
+     }
+    },
+    "TailscaleStatusUpdate": {
+     "fields": {
+      "endpoints": {
+       "rule": "repeated",
+       "type": ".daemon.TailscaleEndpointStatus",
+       "id": 1
+      }
+     }
+    },
+    "TailscaleEndpointStatus": {
+     "fields": {
+      "endpointTag": {
+       "type": "string",
+       "id": 1
+      },
+      "backendState": {
+       "type": "string",
+       "id": 2
+      },
+      "stateText": {
+       "type": "string",
+       "id": 3
+      },
+      "authURL": {
+       "type": "string",
+       "id": 4
+      },
+      "networkName": {
+       "type": "string",
+       "id": 5
+      },
+      "magicDNSSuffix": {
+       "type": "string",
+       "id": 6
+      },
+      "self": {
+       "type": ".daemon.TailscalePeer",
+       "id": 7
+      },
+      "userGroups": {
+       "rule": "repeated",
+       "type": ".daemon.TailscaleUserGroup",
+       "id": 8
+      },
+      "exitNode": {
+       "type": ".daemon.TailscalePeer",
+       "id": 9
+      },
+      "keyAuth": {
+       "type": "bool",
+       "id": 10
+      },
+      "canShareFiles": {
+       "type": "bool",
+       "id": 11
+      },
+      "waitingFileCount": {
+       "type": "int32",
+       "id": 12
+      },
+      "receivingFileCount": {
+       "type": "int32",
+       "id": 13
+      },
+      "unreadFileCount": {
+       "type": "int32",
+       "id": 14
+      },
+      "certDomains": {
+       "rule": "repeated",
+       "type": "string",
+       "id": 15
+      }
+     }
+    },
+    "TailscaleUserGroup": {
+     "fields": {
+      "userID": {
+       "type": "int64",
+       "id": 1
+      },
+      "loginName": {
+       "type": "string",
+       "id": 2
+      },
+      "displayName": {
+       "type": "string",
+       "id": 3
+      },
+      "profilePicURL": {
+       "type": "string",
+       "id": 4
+      },
+      "peers": {
+       "rule": "repeated",
+       "type": ".daemon.TailscalePeer",
+       "id": 5
+      }
+     }
+    },
+    "TailscalePeer": {
+     "fields": {
+      "hostName": {
+       "type": "string",
+       "id": 1
+      },
+      "dnsName": {
+       "type": "string",
+       "id": 2
+      },
+      "os": {
+       "type": "string",
+       "id": 3
+      },
+      "tailscaleIPs": {
+       "rule": "repeated",
+       "type": "string",
+       "id": 4
+      },
+      "online": {
+       "type": "bool",
+       "id": 5
+      },
+      "exitNode": {
+       "type": "bool",
+       "id": 6
+      },
+      "exitNodeOption": {
+       "type": "bool",
+       "id": 7
+      },
+      "active": {
+       "type": "bool",
+       "id": 8
+      },
+      "rxBytes": {
+       "type": "int64",
+       "id": 9
+      },
+      "txBytes": {
+       "type": "int64",
+       "id": 10
+      },
+      "keyExpiry": {
+       "type": "int64",
+       "id": 11
+      },
+      "stableID": {
+       "type": "string",
+       "id": 12
+      },
+      "expired": {
+       "type": "bool",
+       "id": 13
+      },
+      "sshHostKeys": {
+       "rule": "repeated",
+       "type": "string",
+       "id": 14
+      },
+      "shareeNode": {
+       "type": "bool",
+       "id": 15
+      },
+      "lastSeen": {
+       "type": "int64",
+       "id": 16
+      },
+      "canReceiveFiles": {
+       "type": "bool",
+       "id": 17
+      }
+     }
+    },
+    "TailscalePingRequest": {
+     "fields": {
+      "endpointTag": {
+       "type": "string",
+       "id": 1
+      },
+      "peerIP": {
+       "type": "string",
+       "id": 2
+      }
+     }
+    },
+    "TailscalePingResponse": {
+     "fields": {
+      "latencyMs": {
+       "type": "double",
+       "id": 1
+      },
+      "isDirect": {
+       "type": "bool",
+       "id": 2
+      },
+      "endpoint": {
+       "type": "string",
+       "id": 3
+      },
+      "derpRegionID": {
+       "type": "int32",
+       "id": 4
+      },
+      "derpRegionCode": {
+       "type": "string",
+       "id": 5
+      },
+      "error": {
+       "type": "string",
+       "id": 6
+      },
+      "peerRelay": {
+       "type": "string",
+       "id": 7
+      }
+     }
+    },
+    "SetTailscaleExitNodeRequest": {
+     "fields": {
+      "endpointTag": {
+       "type": "string",
+       "id": 1
+      },
+      "stableID": {
+       "type": "string",
+       "id": 2
+      }
+     }
+    },
+    "TailscaleLogoutRequest": {
+     "fields": {
+      "endpointTag": {
+       "type": "string",
+       "id": 1
+      }
+     }
+    },
+    "TailscaleCertificateRequest": {
+     "fields": {
+      "endpointTag": {
+       "type": "string",
+       "id": 1
+      },
+      "domain": {
+       "type": "string",
+       "id": 2
+      },
+      "minValiditySeconds": {
+       "type": "int64",
+       "id": 3
+      }
+     }
+    },
+    "TailscaleCertificate": {
+     "fields": {
+      "certificatePEM": {
+       "type": "bytes",
+       "id": 1
+      },
+      "privateKeyPEM": {
+       "type": "bytes",
+       "id": 2
+      }
+     }
+    },
+    "TailscaleSSHClientMessage": {
+     "oneofs": {
+      "message": {
+       "oneof": [
+        "start",
+        "input",
+        "resize"
+       ]
+      }
+     },
+     "fields": {
+      "start": {
+       "type": ".daemon.TailscaleSSHStart",
+       "id": 1
+      },
+      "input": {
+       "type": ".daemon.TailscaleSSHInput",
+       "id": 2
+      },
+      "resize": {
+       "type": ".daemon.TailscaleSSHResize",
+       "id": 3
+      }
+     }
+    },
+    "TailscaleSSHStart": {
+     "fields": {
+      "endpointTag": {
+       "type": "string",
+       "id": 1
+      },
+      "peerAddress": {
+       "type": "string",
+       "id": 2
+      },
+      "username": {
+       "type": "string",
+       "id": 3
+      },
+      "terminalType": {
+       "type": "string",
+       "id": 4
+      },
+      "columns": {
+       "type": "int32",
+       "id": 5
+      },
+      "rows": {
+       "type": "int32",
+       "id": 6
+      },
+      "widthPixels": {
+       "type": "int32",
+       "id": 7
+      },
+      "heightPixels": {
+       "type": "int32",
+       "id": 8
+      },
+      "hostKeys": {
+       "rule": "repeated",
+       "type": "string",
+       "id": 9
+      },
+      "forward_agent": {
+       "type": "bool",
+       "id": 10
+      }
+     }
+    },
+    "TailscaleSSHInput": {
+     "fields": {
+      "data": {
+       "type": "bytes",
+       "id": 1
+      }
+     }
+    },
+    "TailscaleSSHResize": {
+     "fields": {
+      "columns": {
+       "type": "int32",
+       "id": 1
+      },
+      "rows": {
+       "type": "int32",
+       "id": 2
+      },
+      "widthPixels": {
+       "type": "int32",
+       "id": 3
+      },
+      "heightPixels": {
+       "type": "int32",
+       "id": 4
+      }
+     }
+    },
+    "TailscaleSSHServerMessage": {
+     "oneofs": {
+      "message": {
+       "oneof": [
+        "authBanner",
+        "ready",
+        "output",
+        "exit",
+        "error"
+       ]
+      }
+     },
+     "fields": {
+      "authBanner": {
+       "type": ".daemon.TailscaleSSHAuthBanner",
+       "id": 1
+      },
+      "ready": {
+       "type": ".daemon.TailscaleSSHReady",
+       "id": 2
+      },
+      "output": {
+       "type": ".daemon.TailscaleSSHOutput",
+       "id": 3
+      },
+      "exit": {
+       "type": ".daemon.TailscaleSSHExit",
+       "id": 4
+      },
+      "error": {
+       "type": ".daemon.TailscaleSSHError",
+       "id": 5
+      }
+     }
+    },
+    "TailscaleSSHAuthBanner": {
+     "fields": {
+      "message": {
+       "type": "string",
+       "id": 1
+      }
+     }
+    },
+    "TailscaleSSHReady": {
+     "fields": {}
+    },
+    "TailscaleSSHOutput": {
+     "fields": {
+      "data": {
+       "type": "bytes",
+       "id": 1
+      }
+     }
+    },
+    "TailscaleSSHExit": {
+     "fields": {
+      "exitCode": {
+       "type": "int32",
+       "id": 1
+      },
+      "signal": {
+       "type": "string",
+       "id": 2
+      },
+      "errorMessage": {
+       "type": "string",
+       "id": 3
+      }
+     }
+    },
+    "TailscaleSSHError": {
+     "fields": {
+      "message": {
+       "type": "string",
+       "id": 1
+      }
+     }
+    },
+    "SubscribeTaildropInboxRequest": {
+     "fields": {
+      "endpointTag": {
+       "type": "string",
+       "id": 1
+      }
+     }
+    },
+    "MarkTaildropInboxReadRequest": {
+     "fields": {
+      "endpointTag": {
+       "type": "string",
+       "id": 1
+      }
+     }
+    },
+    "TaildropInbox": {
+     "fields": {
+      "endpointTag": {
+       "type": "string",
+       "id": 1
+      },
+      "files": {
+       "rule": "repeated",
+       "type": ".daemon.TaildropFile",
+       "id": 2
+      },
+      "receiving": {
+       "rule": "repeated",
+       "type": ".daemon.TaildropReceivingFile",
+       "id": 3
+      }
+     }
+    },
+    "TaildropFile": {
+     "fields": {
+      "name": {
+       "type": "string",
+       "id": 1
+      },
+      "size": {
+       "type": "int64",
+       "id": 2
+      },
+      "senderName": {
+       "type": "string",
+       "id": 3
+      },
+      "modifiedAt": {
+       "type": "int64",
+       "id": 4
+      }
+     }
+    },
+    "TaildropReceivingFile": {
+     "fields": {
+      "name": {
+       "type": "string",
+       "id": 1
+      },
+      "size": {
+       "type": "int64",
+       "id": 2
+      },
+      "receivedBytes": {
+       "type": "int64",
+       "id": 3
+      },
+      "senderID": {
+       "type": "string",
+       "id": 4
+      },
+      "senderName": {
+       "type": "string",
+       "id": 5
+      }
+     }
+    },
+    "TaildropSendClientMessage": {
+     "oneofs": {
+      "message": {
+       "oneof": [
+        "start",
+        "chunk",
+        "fileDone"
+       ]
+      }
+     },
+     "fields": {
+      "start": {
+       "type": ".daemon.TaildropSendStart",
+       "id": 1
+      },
+      "chunk": {
+       "type": ".daemon.TaildropFileChunk",
+       "id": 2
+      },
+      "fileDone": {
+       "type": ".daemon.TaildropFileDone",
+       "id": 3
+      }
+     }
+    },
+    "TaildropSendStart": {
+     "fields": {
+      "endpointTag": {
+       "type": "string",
+       "id": 1
+      },
+      "peerStableID": {
+       "type": "string",
+       "id": 2
+      },
+      "files": {
+       "rule": "repeated",
+       "type": ".daemon.TaildropOutgoingFile",
+       "id": 3
+      }
+     }
+    },
+    "TaildropOutgoingFile": {
+     "fields": {
+      "name": {
+       "type": "string",
+       "id": 1
+      },
+      "size": {
+       "type": "int64",
+       "id": 2
+      }
+     }
+    },
+    "TaildropFileChunk": {
+     "fields": {
+      "data": {
+       "type": "bytes",
+       "id": 1
+      }
+     }
+    },
+    "TaildropFileDone": {
+     "fields": {}
+    },
+    "TaildropSendServerMessage": {
+     "oneofs": {
+      "message": {
+       "oneof": [
+        "progress",
+        "receivedBytes"
+       ]
+      }
+     },
+     "fields": {
+      "progress": {
+       "type": ".daemon.TaildropSendProgress",
+       "id": 1
+      },
+      "receivedBytes": {
+       "type": "int64",
+       "id": 2
+      }
+     }
+    },
+    "TaildropSendProgress": {
+     "fields": {
+      "fileIndex": {
+       "type": "int32",
+       "id": 1
+      },
+      "sentBytes": {
+       "type": "int64",
+       "id": 2
+      },
+      "fileCompleted": {
+       "type": "bool",
+       "id": 3
+      }
+     }
+    },
+    "DownloadTaildropFileRequest": {
+     "fields": {
+      "endpointTag": {
+       "type": "string",
+       "id": 1
+      },
+      "name": {
+       "type": "string",
+       "id": 2
+      }
+     }
+    },
+    "DownloadTaildropFileChunk": {
+     "fields": {
+      "size": {
+       "type": "int64",
+       "id": 1
+      },
+      "data": {
+       "type": "bytes",
+       "id": 2
+      }
+     }
+    },
+    "DeleteTaildropFileRequest": {
+     "fields": {
+      "endpointTag": {
+       "type": "string",
+       "id": 1
+      },
+      "name": {
+       "type": "string",
+       "id": 2
+      }
+     }
+    },
+    "CancelTaildropReceivingRequest": {
+     "fields": {
+      "endpointTag": {
+       "type": "string",
+       "id": 1
+      },
+      "senderID": {
+       "type": "string",
+       "id": 2
+      },
+      "name": {
+       "type": "string",
+       "id": 3
+      }
+     }
+    },
+    "USBProviderMessage": {
+     "oneofs": {
+      "message": {
+       "oneof": [
+        "attach",
+        "detach",
+        "urbResponse"
+       ]
+      }
+     },
+     "fields": {
+      "attach": {
+       "type": ".daemon.USBDeviceAttach",
+       "id": 1
+      },
+      "detach": {
+       "type": ".daemon.USBDeviceDetach",
+       "id": 2
+      },
+      "urbResponse": {
+       "type": ".daemon.USBURBResponse",
+       "id": 3
+      }
+     }
+    },
+    "USBServerMessage": {
+     "oneofs": {
+      "message": {
+       "oneof": [
+        "ready",
+        "urbRequest",
+        "abort",
+        "error"
+       ]
+      }
+     },
+     "fields": {
+      "ready": {
+       "type": ".daemon.USBDeviceReady",
+       "id": 1
+      },
+      "urbRequest": {
+       "type": ".daemon.USBURBRequest",
+       "id": 2
+      },
+      "abort": {
+       "type": ".daemon.USBEndpointAbort",
+       "id": 3
+      },
+      "error": {
+       "type": ".daemon.USBError",
+       "id": 4
+      }
+     }
+    },
+    "USBDeviceDescriptor": {
+     "fields": {
+      "deviceId": {
+       "type": "string",
+       "id": 1
+      },
+      "busNum": {
+       "type": "uint32",
+       "id": 2
+      },
+      "devNum": {
+       "type": "uint32",
+       "id": 3
+      },
+      "speed": {
+       "type": "uint32",
+       "id": 4
+      },
+      "vendorId": {
+       "type": "uint32",
+       "id": 5
+      },
+      "productId": {
+       "type": "uint32",
+       "id": 6
+      },
+      "bcdDevice": {
+       "type": "uint32",
+       "id": 7
+      },
+      "deviceClass": {
+       "type": "uint32",
+       "id": 8
+      },
+      "deviceSubClass": {
+       "type": "uint32",
+       "id": 9
+      },
+      "deviceProtocol": {
+       "type": "uint32",
+       "id": 10
+      },
+      "configurationValue": {
+       "type": "uint32",
+       "id": 11
+      },
+      "numConfigurations": {
+       "type": "uint32",
+       "id": 12
+      },
+      "interfaces": {
+       "rule": "repeated",
+       "type": ".daemon.USBInterface",
+       "id": 13
+      },
+      "serial": {
+       "type": "string",
+       "id": 14
+      },
+      "product": {
+       "type": "string",
+       "id": 15
+      }
+     }
+    },
+    "USBDeviceAttach": {
+     "fields": {
+      "serverTag": {
+       "type": "string",
+       "id": 1
+      },
+      "descriptor": {
+       "type": ".daemon.USBDeviceDescriptor",
+       "id": 2
+      }
+     }
+    },
+    "USBInterface": {
+     "fields": {
+      "interfaceClass": {
+       "type": "uint32",
+       "id": 1
+      },
+      "interfaceSubClass": {
+       "type": "uint32",
+       "id": 2
+      },
+      "interfaceProtocol": {
+       "type": "uint32",
+       "id": 3
+      }
+     }
+    },
+    "USBDeviceDetach": {
+     "fields": {
+      "deviceId": {
+       "type": "string",
+       "id": 1
+      }
+     }
+    },
+    "USBDeviceReady": {
+     "fields": {
+      "deviceId": {
+       "type": "string",
+       "id": 1
+      },
+      "busId": {
+       "type": "string",
+       "id": 2
+      }
+     }
+    },
+    "USBURBRequest": {
+     "fields": {
+      "deviceId": {
+       "type": "string",
+       "id": 1
+      },
+      "seq": {
+       "type": "uint64",
+       "id": 2
+      },
+      "endpoint": {
+       "type": "uint32",
+       "id": 3
+      },
+      "directionIn": {
+       "type": "bool",
+       "id": 4
+      },
+      "transferFlags": {
+       "type": "uint32",
+       "id": 5
+      },
+      "setup": {
+       "type": "bytes",
+       "id": 6
+      },
+      "transferBufferLength": {
+       "type": "uint32",
+       "id": 7
+      },
+      "outData": {
+       "type": "bytes",
+       "id": 8
+      },
+      "numberOfPackets": {
+       "type": "int32",
+       "id": 9
+      },
+      "startFrame": {
+       "type": "int32",
+       "id": 10
+      },
+      "interval": {
+       "type": "int32",
+       "id": 11
+      },
+      "isoPackets": {
+       "rule": "repeated",
+       "type": ".daemon.USBIsoPacket",
+       "id": 12
+      }
+     }
+    },
+    "USBURBResponse": {
+     "fields": {
+      "deviceId": {
+       "type": "string",
+       "id": 1
+      },
+      "seq": {
+       "type": "uint64",
+       "id": 2
+      },
+      "status": {
+       "type": "int32",
+       "id": 3
+      },
+      "actualLength": {
+       "type": "int32",
+       "id": 4
+      },
+      "inData": {
+       "type": "bytes",
+       "id": 5
+      },
+      "isoPackets": {
+       "rule": "repeated",
+       "type": ".daemon.USBIsoPacket",
+       "id": 6
+      }
+     }
+    },
+    "USBIsoPacket": {
+     "fields": {
+      "offset": {
+       "type": "int32",
+       "id": 1
+      },
+      "length": {
+       "type": "int32",
+       "id": 2
+      },
+      "actualLength": {
+       "type": "int32",
+       "id": 3
+      },
+      "status": {
+       "type": "int32",
+       "id": 4
+      }
+     }
+    },
+    "USBEndpointAbort": {
+     "fields": {
+      "deviceId": {
+       "type": "string",
+       "id": 1
+      },
+      "endpoint": {
+       "type": "uint32",
+       "id": 2
+      }
+     }
+    },
+    "USBError": {
+     "fields": {
+      "deviceId": {
+       "type": "string",
+       "id": 1
+      },
+      "message": {
+       "type": "string",
+       "id": 2
+      }
+     }
+    },
+    "USBIPServerStatusUpdate": {
+     "fields": {
+      "servers": {
+       "rule": "repeated",
+       "type": ".daemon.USBIPServerStatus",
+       "id": 1
+      }
+     }
+    },
+    "USBIPServerStatus": {
+     "fields": {
+      "serverTag": {
+       "type": "string",
+       "id": 1
+      },
+      "devices": {
+       "rule": "repeated",
+       "type": ".daemon.USBSharedDevice",
+       "id": 2
+      }
+     }
+    },
+    "USBSharedDevice": {
+     "fields": {
+      "descriptor": {
+       "type": ".daemon.USBDeviceDescriptor",
+       "id": 1
+      },
+      "busId": {
+       "type": "string",
+       "id": 2
+      },
+      "stableId": {
+       "type": "string",
+       "id": 3
+      },
+      "backend": {
+       "type": ".daemon.USBBackend",
+       "id": 4
+      },
+      "state": {
+       "type": ".daemon.USBDeviceState",
+       "id": 5
+      }
+     }
+    },
+    "OpenConnectStatusUpdate": {
+     "fields": {
+      "endpoints": {
+       "rule": "repeated",
+       "type": ".daemon.OpenConnectEndpointStatus",
+       "id": 1
+      }
+     }
+    },
+    "OpenConnectEndpointStatus": {
+     "fields": {
+      "endpointTag": {
+       "type": "string",
+       "id": 1
+      },
+      "state": {
+       "type": "string",
+       "id": 2
+      },
+      "stateText": {
+       "type": "string",
+       "id": 3
+      },
+      "authChallenge": {
+       "type": ".daemon.OpenConnectAuthChallenge",
+       "id": 4
+      },
+      "error": {
+       "type": "string",
+       "id": 5
+      },
+      "tunnelInfo": {
+       "type": ".daemon.OpenConnectTunnelInfo",
+       "id": 6
+      }
+     }
+    },
+    "OpenConnectTunnelInfo": {
+     "fields": {
+      "server": {
+       "type": "string",
+       "id": 1
+      },
+      "flavor": {
+       "type": "string",
+       "id": 2
+      },
+      "transport": {
+       "type": "string",
+       "id": 3
+      },
+      "ipv4": {
+       "rule": "repeated",
+       "type": "string",
+       "id": 4
+      },
+      "ipv6": {
+       "rule": "repeated",
+       "type": "string",
+       "id": 5
+      },
+      "dns": {
+       "rule": "repeated",
+       "type": "string",
+       "id": 6
+      },
+      "mtu": {
+       "type": "uint32",
+       "id": 7
+      },
+      "connectedSince": {
+       "type": "int64",
+       "id": 8
+      }
+     }
+    },
+    "OpenConnectAuthChallenge": {
+     "oneofs": {
+      "challenge": {
+       "oneof": [
+        "form",
+        "browser"
+       ]
+      }
+     },
+     "fields": {
+      "id": {
+       "type": "string",
+       "id": 1
+      },
+      "banner": {
+       "type": "string",
+       "id": 2
+      },
+      "message": {
+       "type": "string",
+       "id": 3
+      },
+      "error": {
+       "type": "string",
+       "id": 4
+      },
+      "form": {
+       "type": ".daemon.OpenConnectAuthForm",
+       "id": 5
+      },
+      "browser": {
+       "type": ".daemon.OpenConnectBrowserRequest",
+       "id": 6
+      }
+     }
+    },
+    "OpenConnectAuthForm": {
+     "fields": {
+      "fields": {
+       "rule": "repeated",
+       "type": ".daemon.OpenConnectAuthFormField",
+       "id": 1
+      }
+     }
+    },
+    "OpenConnectAuthFormField": {
+     "fields": {
+      "submissionKey": {
+       "type": "string",
+       "id": 1
+      },
+      "name": {
+       "type": "string",
+       "id": 2
+      },
+      "label": {
+       "type": "string",
+       "id": 3
+      },
+      "kind": {
+       "type": "string",
+       "id": 4
+      },
+      "value": {
+       "type": "string",
+       "id": 5
+      },
+      "options": {
+       "rule": "repeated",
+       "type": ".daemon.OpenConnectAuthFormChoice",
+       "id": 6
+      }
+     }
+    },
+    "OpenConnectAuthFormChoice": {
+     "fields": {
+      "value": {
+       "type": "string",
+       "id": 1
+      },
+      "label": {
+       "type": "string",
+       "id": 2
+      }
+     }
+    },
+    "OpenConnectBrowserRequest": {
+     "fields": {
+      "url": {
+       "type": "string",
+       "id": 1
+      },
+      "finalURL": {
+       "type": "string",
+       "id": 2
+      },
+      "cookieNames": {
+       "rule": "repeated",
+       "type": "string",
+       "id": 3
+      },
+      "headerNames": {
+       "rule": "repeated",
+       "type": "string",
+       "id": 4
+      },
+      "callbackURLPrefixes": {
+       "rule": "repeated",
+       "type": "string",
+       "id": 5
+      },
+      "earlyCookieNames": {
+       "rule": "repeated",
+       "type": "string",
+       "id": 6
+      },
+      "cacheID": {
+       "type": "string",
+       "id": 7
+      }
+     }
+    },
+    "OpenConnectBrowserCookie": {
+     "fields": {
+      "name": {
+       "type": "string",
+       "id": 1
+      },
+      "value": {
+       "type": "string",
+       "id": 2
+      }
+     }
+    },
+    "OpenConnectBrowserHeader": {
+     "fields": {
+      "name": {
+       "type": "string",
+       "id": 1
+      },
+      "values": {
+       "rule": "repeated",
+       "type": "string",
+       "id": 2
+      }
+     }
+    },
+    "OpenConnectAuthFormResponse": {
+     "options": {
+      "map_entry": true
+     },
+     "fields": {
+      "values": {
+       "rule": "repeated",
+       "type": ".daemon.OpenConnectAuthFormResponse.ValuesEntry",
+       "id": 1
+      }
+     },
+     "nested": {
+      "ValuesEntry": {
+       "options": {
+        "map_entry": true
+       },
+       "fields": {
+        "key": {
+         "type": "string",
+         "id": 1
+        },
+        "value": {
+         "type": "string",
+         "id": 2
+        }
+       }
+      }
+     }
+    },
+    "OpenConnectBrowserResult": {
+     "fields": {
+      "finalURL": {
+       "type": "string",
+       "id": 1
+      },
+      "cookies": {
+       "rule": "repeated",
+       "type": ".daemon.OpenConnectBrowserCookie",
+       "id": 2
+      },
+      "headers": {
+       "rule": "repeated",
+       "type": ".daemon.OpenConnectBrowserHeader",
+       "id": 3
+      }
+     }
+    },
+    "OpenConnectAuthResponseSubmission": {
+     "oneofs": {
+      "response": {
+       "oneof": [
+        "form",
+        "browser"
+       ]
+      }
+     },
+     "fields": {
+      "endpointTag": {
+       "type": "string",
+       "id": 1
+      },
+      "challengeID": {
+       "type": "string",
+       "id": 2
+      },
+      "form": {
+       "type": ".daemon.OpenConnectAuthFormResponse",
+       "id": 3
+      },
+      "browser": {
+       "type": ".daemon.OpenConnectBrowserResult",
+       "id": 4
+      }
+     }
+    },
+    "OpenConnectAuthChallengeCancel": {
+     "fields": {
+      "endpointTag": {
+       "type": "string",
+       "id": 1
+      },
+      "challengeID": {
+       "type": "string",
+       "id": 2
+      }
+     }
+    },
+    "OpenVPNStatusUpdate": {
+     "fields": {
+      "endpoints": {
+       "rule": "repeated",
+       "type": ".daemon.OpenVPNEndpointStatus",
+       "id": 1
+      }
+     }
+    },
+    "OpenVPNEndpointStatus": {
+     "fields": {
+      "endpointTag": {
+       "type": "string",
+       "id": 1
+      },
+      "state": {
+       "type": "string",
+       "id": 2
+      },
+      "stateText": {
+       "type": "string",
+       "id": 3
+      },
+      "challenge": {
+       "type": ".daemon.OpenVPNChallenge",
+       "id": 4
+      },
+      "error": {
+       "type": "string",
+       "id": 5
+      },
+      "tunnelInfo": {
+       "type": ".daemon.OpenVPNTunnelInfo",
+       "id": 6
+      }
+     }
+    },
+    "OpenVPNTunnelInfo": {
+     "fields": {
+      "server": {
+       "type": "string",
+       "id": 1
+      },
+      "network": {
+       "type": "string",
+       "id": 3
+      },
+      "ipv4": {
+       "rule": "repeated",
+       "type": "string",
+       "id": 4
+      },
+      "ipv6": {
+       "rule": "repeated",
+       "type": "string",
+       "id": 5
+      },
+      "dns": {
+       "rule": "repeated",
+       "type": "string",
+       "id": 6
+      },
+      "mtu": {
+       "type": "uint32",
+       "id": 7
+      },
+      "connectedSince": {
+       "type": "int64",
+       "id": 8
+      },
+      "cipher": {
+       "type": "string",
+       "id": 9
+      }
+     },
+     "reserved": [
+      [
+       2,
+       3
+      ]
+     ]
+    },
+    "OpenVPNChallenge": {
+     "fields": {
+      "id": {
+       "type": "string",
+       "id": 1
+      },
+      "kind": {
+       "type": "string",
+       "id": 2
+      },
+      "username": {
+       "type": "string",
+       "id": 3
+      },
+      "message": {
+       "type": "string",
+       "id": 4
+      },
+      "url": {
+       "type": "string",
+       "id": 5
+      },
+      "secretMessage": {
+       "type": "string",
+       "id": 6
+      },
+      "echo": {
+       "type": "bool",
+       "id": 7
+      },
+      "previousError": {
+       "type": "string",
+       "id": 8
+      },
+      "deadline": {
+       "type": "int64",
+       "id": 9
+      }
+     }
+    },
+    "OpenVPNChallengeSubmission": {
+     "fields": {
+      "endpointTag": {
+       "type": "string",
+       "id": 1
+      },
+      "challengeID": {
+       "type": "string",
+       "id": 2
+      },
+      "username": {
+       "type": "string",
+       "id": 3
+      },
+      "password": {
+       "type": "string",
+       "id": 4
+      },
+      "secret": {
+       "type": "string",
+       "id": 5
+      }
+     }
+    },
+    "OpenVPNChallengeCancel": {
+     "fields": {
+      "endpointTag": {
+       "type": "string",
+       "id": 1
+      },
+      "challengeID": {
+       "type": "string",
+       "id": 2
+      }
+     }
+    },
+    "NotificationEvent": {
+     "oneofs": {
+      "event": {
+       "oneof": [
+        "send",
+        "cancel"
+       ]
+      }
+     },
+     "fields": {
+      "send": {
+       "type": ".daemon.Notification",
+       "id": 1
+      },
+      "cancel": {
+       "type": ".daemon.NotificationCancel",
+       "id": 2
+      }
+     }
+    },
+    "Notification": {
+     "fields": {
+      "identifier": {
+       "type": "string",
+       "id": 1
+      },
+      "typeName": {
+       "type": "string",
+       "id": 2
+      },
+      "typeID": {
+       "type": "int32",
+       "id": 3
+      },
+      "title": {
+       "type": "string",
+       "id": 4
+      },
+      "subtitle": {
+       "type": "string",
+       "id": 5
+      },
+      "body": {
+       "type": "string",
+       "id": 6
+      },
+      "openURL": {
+       "type": "string",
+       "id": 7
+      }
+     }
+    },
+    "NotificationCancel": {
+     "fields": {
+      "identifier": {
+       "type": "string",
+       "id": 1
+      },
+      "typeID": {
+       "type": "int32",
+       "id": 2
+      }
+     }
+    },
+    "LogLevel": {
+     "values": {
+      "PANIC": 0,
+      "FATAL": 1,
+      "ERROR": 2,
+      "WARN": 3,
+      "INFO": 4,
+      "DEBUG": 5,
+      "TRACE": 6
+     }
+    },
+    "ConnectionEventType": {
+     "values": {
+      "CONNECTION_EVENT_NEW": 0,
+      "CONNECTION_EVENT_UPDATE": 1,
+      "CONNECTION_EVENT_CLOSED": 2
+     }
+    },
+    "USBDeviceState": {
+     "values": {
+      "USB_DEVICE_STATE_IDLE": 0,
+      "USB_DEVICE_STATE_ATTACHED": 1,
+      "USB_DEVICE_STATE_UNAVAILABLE": 2
+     }
+    },
+    "USBBackend": {
+     "values": {
+      "USB_BACKEND_UNSPECIFIED": 0,
+      "USB_BACKEND_LINUX_SYSFS": 1,
+      "USB_BACKEND_DYNAMIC": 2,
+      "USB_BACKEND_DARWIN_IOKIT": 3,
+      "USB_BACKEND_WINDOWS_VBOXUSB": 4
+     }
+    },
+    "StartedService": {
+     "methods": {
+      "GetVersion": {
+       "requestType": ".google.protobuf.Empty",
+       "responseType": ".daemon.Version",
+       "options": {}
+      },
+      "SubscribeServiceStatus": {
+       "requestType": ".google.protobuf.Empty",
+       "responseType": ".daemon.ServiceStatus",
+       "responseStream": true,
+       "options": {}
+      },
+      "SubscribeLog": {
+       "requestType": ".google.protobuf.Empty",
+       "responseType": ".daemon.Log",
+       "responseStream": true,
+       "options": {}
+      },
+      "GetDefaultLogLevel": {
+       "requestType": ".google.protobuf.Empty",
+       "responseType": ".daemon.DefaultLogLevel",
+       "options": {}
+      },
+      "ClearLogs": {
+       "requestType": ".google.protobuf.Empty",
+       "responseType": ".google.protobuf.Empty",
+       "options": {}
+      },
+      "SubscribeStatus": {
+       "requestType": ".daemon.SubscribeStatusRequest",
+       "responseType": ".daemon.Status",
+       "responseStream": true,
+       "options": {}
+      },
+      "SubscribeGroups": {
+       "requestType": ".google.protobuf.Empty",
+       "responseType": ".daemon.Groups",
+       "responseStream": true,
+       "options": {}
+      },
+      "GetClashModeStatus": {
+       "requestType": ".google.protobuf.Empty",
+       "responseType": ".daemon.ClashModeStatus",
+       "options": {}
+      },
+      "SubscribeClashMode": {
+       "requestType": ".google.protobuf.Empty",
+       "responseType": ".daemon.ClashMode",
+       "responseStream": true,
+       "options": {}
+      },
+      "SetClashMode": {
+       "requestType": ".daemon.ClashMode",
+       "responseType": ".google.protobuf.Empty",
+       "options": {}
+      },
+      "URLTest": {
+       "requestType": ".daemon.URLTestRequest",
+       "responseType": ".google.protobuf.Empty",
+       "options": {}
+      },
+      "SelectOutbound": {
+       "requestType": ".daemon.SelectOutboundRequest",
+       "responseType": ".google.protobuf.Empty",
+       "options": {}
+      },
+      "SetGroupExpand": {
+       "requestType": ".daemon.SetGroupExpandRequest",
+       "responseType": ".google.protobuf.Empty",
+       "options": {}
+      },
+      "SubscribeConnections": {
+       "requestType": ".daemon.SubscribeConnectionsRequest",
+       "responseType": ".daemon.ConnectionEvents",
+       "responseStream": true,
+       "options": {}
+      },
+      "CloseConnection": {
+       "requestType": ".daemon.CloseConnectionRequest",
+       "responseType": ".google.protobuf.Empty",
+       "options": {}
+      },
+      "CloseAllConnections": {
+       "requestType": ".google.protobuf.Empty",
+       "responseType": ".google.protobuf.Empty",
+       "options": {}
+      },
+      "GetDeprecatedWarnings": {
+       "requestType": ".google.protobuf.Empty",
+       "responseType": ".daemon.DeprecatedWarnings",
+       "options": {}
+      },
+      "GetStartedAt": {
+       "requestType": ".google.protobuf.Empty",
+       "responseType": ".daemon.StartedAt",
+       "options": {}
+      },
+      "SubscribeOutbounds": {
+       "requestType": ".google.protobuf.Empty",
+       "responseType": ".daemon.OutboundList",
+       "responseStream": true,
+       "options": {}
+      },
+      "StartNetworkQualityTest": {
+       "requestType": ".daemon.NetworkQualityTestRequest",
+       "responseType": ".daemon.NetworkQualityTestProgress",
+       "responseStream": true,
+       "options": {}
+      },
+      "StartSTUNTest": {
+       "requestType": ".daemon.STUNTestRequest",
+       "responseType": ".daemon.STUNTestProgress",
+       "responseStream": true,
+       "options": {}
+      },
+      "SubscribeTailscaleStatus": {
+       "requestType": ".google.protobuf.Empty",
+       "responseType": ".daemon.TailscaleStatusUpdate",
+       "responseStream": true,
+       "options": {}
+      },
+      "StartTailscalePing": {
+       "requestType": ".daemon.TailscalePingRequest",
+       "responseType": ".daemon.TailscalePingResponse",
+       "responseStream": true,
+       "options": {}
+      },
+      "SetTailscaleExitNode": {
+       "requestType": ".daemon.SetTailscaleExitNodeRequest",
+       "responseType": ".google.protobuf.Empty",
+       "options": {}
+      },
+      "TailscaleLogout": {
+       "requestType": ".daemon.TailscaleLogoutRequest",
+       "responseType": ".google.protobuf.Empty",
+       "options": {}
+      },
+      "GetTailscaleCertificate": {
+       "requestType": ".daemon.TailscaleCertificateRequest",
+       "responseType": ".daemon.TailscaleCertificate",
+       "options": {}
+      },
+      "StartTailscaleSSHSession": {
+       "requestType": ".daemon.TailscaleSSHClientMessage",
+       "requestStream": true,
+       "responseType": ".daemon.TailscaleSSHServerMessage",
+       "responseStream": true,
+       "options": {}
+      },
+      "SubscribeTaildropInbox": {
+       "requestType": ".daemon.SubscribeTaildropInboxRequest",
+       "responseType": ".daemon.TaildropInbox",
+       "responseStream": true,
+       "options": {}
+      },
+      "MarkTaildropInboxRead": {
+       "requestType": ".daemon.MarkTaildropInboxReadRequest",
+       "responseType": ".google.protobuf.Empty",
+       "options": {}
+      },
+      "SendTaildropFiles": {
+       "requestType": ".daemon.TaildropSendClientMessage",
+       "requestStream": true,
+       "responseType": ".daemon.TaildropSendServerMessage",
+       "responseStream": true,
+       "options": {}
+      },
+      "DownloadTaildropFile": {
+       "requestType": ".daemon.DownloadTaildropFileRequest",
+       "responseType": ".daemon.DownloadTaildropFileChunk",
+       "responseStream": true,
+       "options": {}
+      },
+      "DeleteTaildropFile": {
+       "requestType": ".daemon.DeleteTaildropFileRequest",
+       "responseType": ".google.protobuf.Empty",
+       "options": {}
+      },
+      "CancelTaildropReceiving": {
+       "requestType": ".daemon.CancelTaildropReceivingRequest",
+       "responseType": ".google.protobuf.Empty",
+       "options": {}
+      },
+      "ProvideUSBDevices": {
+       "requestType": ".daemon.USBProviderMessage",
+       "requestStream": true,
+       "responseType": ".daemon.USBServerMessage",
+       "responseStream": true,
+       "options": {}
+      },
+      "SubscribeUSBIPServerStatus": {
+       "requestType": ".google.protobuf.Empty",
+       "responseType": ".daemon.USBIPServerStatusUpdate",
+       "responseStream": true,
+       "options": {}
+      },
+      "SubscribeOpenConnectStatus": {
+       "requestType": ".google.protobuf.Empty",
+       "responseType": ".daemon.OpenConnectStatusUpdate",
+       "responseStream": true,
+       "options": {}
+      },
+      "SubmitOpenConnectAuthResponse": {
+       "requestType": ".daemon.OpenConnectAuthResponseSubmission",
+       "responseType": ".google.protobuf.Empty",
+       "options": {}
+      },
+      "CancelOpenConnectAuthChallenge": {
+       "requestType": ".daemon.OpenConnectAuthChallengeCancel",
+       "responseType": ".google.protobuf.Empty",
+       "options": {}
+      },
+      "SubscribeOpenVPNStatus": {
+       "requestType": ".google.protobuf.Empty",
+       "responseType": ".daemon.OpenVPNStatusUpdate",
+       "responseStream": true,
+       "options": {}
+      },
+      "SubmitOpenVPNChallengeResponse": {
+       "requestType": ".daemon.OpenVPNChallengeSubmission",
+       "responseType": ".google.protobuf.Empty",
+       "options": {}
+      },
+      "CancelOpenVPNChallenge": {
+       "requestType": ".daemon.OpenVPNChallengeCancel",
+       "responseType": ".google.protobuf.Empty",
+       "options": {}
+      },
+      "SubscribeNotifications": {
+       "requestType": ".google.protobuf.Empty",
+       "responseType": ".daemon.NotificationEvent",
+       "responseStream": true,
+       "options": {}
+      }
+     }
+    }
+   }
+  }
+ }
+}

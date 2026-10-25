@@ -1,0 +1,87 @@
+<mat-card appearance="outlined" class="card">
+  <mat-card-header>
+    <mat-card-title>Profiles</mat-card-title>
+    <span class="spacer"></span>
+    <button mat-icon-button [matMenuTriggerFor]="addMenu" matTooltip="Add profile">
+      <mat-icon>add</mat-icon>
+    </button>
+    <mat-menu #addMenu="matMenu">
+      <a mat-menu-item routerLink="/profiles/new">
+        <mat-icon>edit_note</mat-icon>
+        <span>Create manually</span>
+      </a>
+      <button mat-menu-item (click)="importFile()">
+        <mat-icon>upload_file</mat-icon>
+        <span>Import from file</span>
+      </button>
+      <button mat-menu-item (click)="importLink()">
+        <mat-icon>content_paste</mat-icon>
+        <span>Import link from clipboard</span>
+      </button>
+    </mat-menu>
+  </mat-card-header>
+  <mat-card-content>
+    @if (profileService.profiles().length === 0) {
+      <p class="muted empty">No profiles yet. Create one or import an existing configuration.</p>
+    } @else {
+      <mat-radio-group [value]="profileService.selectedId()" class="list">
+        @for (profile of profileService.profiles(); track profile.id; let first = $first, last = $last) {
+          <div class="row" [class.selected]="profile.id === profileService.selectedId()" (click)="select(profile)">
+            <mat-radio-button [value]="profile.id" (click)="$event.stopPropagation(); select(profile)" />
+            <div class="info">
+              <span class="name">{{ profile.name }}</span>
+              <span class="meta muted">
+                {{ profile.type === 'remote' ? 'Remote' : 'Local' }}
+                @if (profile.type === 'remote' && profile.lastUpdated) {
+                  · updated {{ profile.lastUpdated | date: 'short' }}
+                }
+              </span>
+            </div>
+            @if (updating() === profile.id) {
+              <mat-spinner diameter="20" />
+            }
+            <button mat-icon-button [matMenuTriggerFor]="menu" (click)="$event.stopPropagation()">
+              <mat-icon>more_vert</mat-icon>
+            </button>
+            <mat-menu #menu="matMenu">
+              <a mat-menu-item [routerLink]="['/profiles', profile.id]">
+                <mat-icon>edit</mat-icon>
+                <span>Edit</span>
+              </a>
+              <a mat-menu-item [routerLink]="['/profiles', profile.id, 'content']">
+                <mat-icon>data_object</mat-icon>
+                <span>{{ profile.type === 'remote' ? 'View configuration' : 'Edit configuration' }}</span>
+              </a>
+              @if (profile.type === 'remote') {
+                <button mat-menu-item (click)="update(profile)" [disabled]="updating() !== null">
+                  <mat-icon>sync</mat-icon>
+                  <span>Update</span>
+                </button>
+                <button mat-menu-item (click)="copyImportLink(profile)">
+                  <mat-icon>link</mat-icon>
+                  <span>Copy import link</span>
+                </button>
+              }
+              <button mat-menu-item (click)="export(profile)">
+                <mat-icon>save</mat-icon>
+                <span>Save as file</span>
+              </button>
+              <button mat-menu-item (click)="profileService.move(profile.id, -1)" [disabled]="first">
+                <mat-icon>arrow_upward</mat-icon>
+                <span>Move up</span>
+              </button>
+              <button mat-menu-item (click)="profileService.move(profile.id, 1)" [disabled]="last">
+                <mat-icon>arrow_downward</mat-icon>
+                <span>Move down</span>
+              </button>
+              <button mat-menu-item (click)="delete(profile)">
+                <mat-icon>delete</mat-icon>
+                <span>Delete</span>
+              </button>
+            </mat-menu>
+          </div>
+        }
+      </mat-radio-group>
+    }
+  </mat-card-content>
+</mat-card>

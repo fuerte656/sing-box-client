@@ -1,0 +1,74 @@
+<div class="page">
+  <header class="page-header">
+    <button mat-icon-button (click)="back()"><mat-icon>arrow_back</mat-icon></button>
+    <h1>Edit Profile</h1>
+    <button mat-flat-button (click)="save()" [disabled]="!dirty() || !valid() || busy()">Save</button>
+  </header>
+  @if (busy()) {
+    <mat-progress-bar mode="indeterminate" />
+  }
+
+  @if (profile(); as p) {
+    <form class="form" (ngSubmit)="save()">
+      <h2 class="section-title">Basic information</h2>
+      <mat-form-field appearance="outline">
+        <mat-label>Name</mat-label>
+        <input matInput name="name" required [ngModel]="name()" (ngModelChange)="name.set($event)" />
+      </mat-form-field>
+      <div class="muted">Type: {{ p.type === 'remote' ? 'Remote' : 'Local' }}</div>
+
+      <h2 class="section-title">Content</h2>
+      <div class="actions">
+        <a mat-stroked-button [routerLink]="['/profiles', p.id, 'content']">
+          <mat-icon>data_object</mat-icon>
+          {{ p.type === 'remote' ? 'JSON viewer' : 'JSON editor' }}
+        </a>
+      </div>
+
+      @if (p.type === 'remote') {
+        <h2 class="section-title">Remote configuration</h2>
+        <mat-form-field appearance="outline">
+          <mat-label>URL</mat-label>
+          <input
+            matInput
+            name="url"
+            type="url"
+            required
+            [ngModel]="remoteUrl()"
+            (ngModelChange)="remoteUrl.set($event)"
+          />
+        </mat-form-field>
+        <mat-slide-toggle name="autoUpdate" [ngModel]="autoUpdate()" (ngModelChange)="autoUpdate.set($event)">
+          Auto update
+        </mat-slide-toggle>
+        @if (autoUpdate()) {
+          <mat-form-field appearance="outline" class="interval">
+            <mat-label>Auto update interval (minutes)</mat-label>
+            <input
+              matInput
+              name="interval"
+              type="number"
+              [min]="minInterval"
+              [ngModel]="autoUpdateInterval()"
+              (ngModelChange)="autoUpdateInterval.set(+$event)"
+            />
+            <mat-hint>Minimum {{ minInterval }} minutes</mat-hint>
+          </mat-form-field>
+        }
+        <div class="muted">
+          Last updated: {{ p.lastUpdated ? (p.lastUpdated | date: 'medium') : 'never' }}
+        </div>
+        <div class="actions">
+          <button mat-stroked-button type="button" (click)="updateNow()" [disabled]="busy() || !valid()">
+            <mat-icon>sync</mat-icon> Update now
+          </button>
+        </div>
+      }
+    </form>
+  } @else {
+    <div class="empty-state">
+      <mat-icon>help</mat-icon>
+      <span>Profile not found.</span>
+    </div>
+  }
+</div>

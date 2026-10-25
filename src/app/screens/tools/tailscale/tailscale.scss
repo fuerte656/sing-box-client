@@ -1,0 +1,244 @@
+// Shared by the Tailscale screens: grouped list "cards" in the style of SFA.
+:host {
+  display: contents;
+}
+
+.page {
+  overflow-y: auto;
+}
+
+.content {
+  max-width: 760px;
+  padding-bottom: 24px;
+}
+
+.subtitle {
+  font: var(--mat-sys-body-medium);
+  margin-left: 6px;
+}
+
+.group {
+  border-radius: 16px;
+  background: var(--mat-sys-surface-container);
+  padding: 4px 0;
+  overflow: hidden;
+}
+
+.item {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  min-height: 56px;
+  padding: 8px 16px;
+  box-sizing: border-box;
+  color: inherit;
+  text-decoration: none;
+
+  & + .item {
+    border-top: 1px solid var(--mat-sys-outline-variant);
+  }
+
+  &.link {
+    cursor: pointer;
+
+    &:hover {
+      background: var(--mat-sys-surface-container-high);
+    }
+  }
+}
+
+.lead {
+  color: var(--mat-sys-primary);
+  flex: none;
+}
+
+.trail {
+  color: var(--mat-sys-on-surface-variant);
+  flex: none;
+}
+
+.text {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+  gap: 2px;
+}
+
+.title {
+  font: var(--mat-sys-body-large);
+}
+
+.sub {
+  font: var(--mat-sys-body-medium);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+
+  &.ok {
+    color: #2e9d4f;
+
+    .dot {
+      background: #2e9d4f;
+    }
+  }
+
+  &.warn {
+    color: #c98a00;
+
+    .dot {
+      background: #c98a00;
+    }
+  }
+}
+
+.ellipsis {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex: none;
+  background: var(--mat-sys-outline);
+
+  &.online {
+    background: #2e9d4f;
+  }
+}
+
+.peer .dot {
+  margin-top: 8px;
+  align-self: flex-start;
+}
+
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 4px;
+
+  &:empty {
+    display: none;
+  }
+}
+
+.chip {
+  font: var(--mat-sys-label-small);
+  padding: 2px 8px;
+  border-radius: 8px;
+  background: var(--mat-sys-surface-container-highest);
+  color: var(--mat-sys-on-surface-variant);
+
+  &.primary {
+    background: var(--mat-sys-primary);
+    color: var(--mat-sys-on-primary);
+  }
+
+  &.error {
+    background: var(--mat-sys-error-container);
+    color: var(--mat-sys-on-error-container);
+  }
+}
+
+.badge {
+  min-width: 20px;
+  height: 20px;
+  padding: 0 6px;
+  border-radius: 10px;
+  box-sizing: border-box;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font: var(--mat-sys-label-small);
+  background: var(--mat-sys-error);
+  color: var(--mat-sys-on-error);
+}
+
+.section-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+
+  .section-title {
+    margin-bottom: 8px;
+  }
+}
+
+.details {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 10px 24px;
+  padding: 12px 16px;
+
+  dt {
+    color: var(--mat-sys-on-surface-variant);
+  }
+
+  dd {
+    margin: 0;
+    text-align: right;
+    word-break: break-all;
+  }
+}
+
+.drop-zone {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 120px;
+  padding: 16px;
+  text-align: center;
+  cursor: pointer;
+  border: 2px dashed transparent;
+  border-radius: 16px;
+  transition: border-color 0.15s;
+
+  &.dragging {
+    border-color: var(--mat-sys-primary);
+    background: var(--mat-sys-surface-container-high);
+  }
+}
+
+.search {
+  width: 100%;
+  margin-bottom: 12px;
+}
+
+.subtitle.ok {
+  color: #2e9d4f;
+}
+
+.ssh-user {
+  flex: 1;
+}
+
+.hint {
+  font: var(--mat-sys-body-small);
+  min-height: 0;
+}
+
+.drop-zone mat-progress-bar {
+  max-width: 240px;
+}
+
+.exit-node {
+  width: 260px;
+}
+
+.option-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.option-sub {
+  display: block;
+  font: var(--mat-sys-body-small);
+}

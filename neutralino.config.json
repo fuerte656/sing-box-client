@@ -1,0 +1,67 @@
+{
+  "$schema": "https://raw.githubusercontent.com/neutralinojs/neutralinojs/main/schemas/neutralino.config.schema.json",
+  "applicationId": "io.github.singboxclient",
+  "version": "0.1.0",
+  "applicationName": "sing-box client",
+  "applicationIcon": "public/icons/app.png",
+  "description": "sing-box client",
+  "copyright": "Licensed under GPL-3.0-or-later",
+  "defaultMode": "window",
+  "port": 0,
+  "documentRoot": "/www/",
+  "url": "/",
+  "enableServer": true,
+  "enableNativeAPI": true,
+  "tokenSecurity": "one-time",
+  "logging": {
+    "enabled": true,
+    "writeToLogFile": false
+  },
+  "nativeAllowList": [
+    "app.*",
+    "os.*",
+    "filesystem.*",
+    "window.*",
+    "events.*",
+    "storage.*",
+    "clipboard.*",
+    "computer.*",
+    "debug.log"
+  ],
+  "globalVariables": {},
+  "modes": {
+    "window": {
+      "title": "sing-box",
+      "width": 1100,
+      "height": 760,
+      "minWidth": 720,
+      "minHeight": 520,
+      "center": true,
+      "fullScreen": false,
+      "alwaysOnTop": false,
+      "icon": "/www/icons/app.png",
+      "enableInspector": false,
+      "borderless": false,
+      "maximize": false,
+      "hidden": true,
+      "resizable": true,
+      "exitProcessOnClose": false,
+      "useSavedState": false
+    }
+  },
+  "cli": {
+    "binaryName": "sing-box-client",
+    "resourcesPath": "/www/",
+    "extensionsPath": "/extensions/",
+    "binaryVersion": "6.10.0",
+    "clientVersion": "6.10.0",
+    "frontendLibrary": {
+      "patchFile": "/src/index.html",
+      "devUrl": "http://localhost:5180",
+      "projectPath": "/",
+      "initCommand": "npm install",
+      "devCommand": "npx ng serve",
+      "buildCommand": "npx ng build"
+    }
+  }
+}

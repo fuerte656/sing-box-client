@@ -1,0 +1,31 @@
+<div class="page" (keydown)="onKeydown($event)">
+  <header class="page-header">
+    <button mat-icon-button (click)="back()"><mat-icon>arrow_back</mat-icon></button>
+    <h1>
+      {{ profile()?.name ?? 'Configuration' }}
+      <span class="muted mode">{{ readOnly() ? 'JSON viewer' : 'JSON editor' }}{{ dirty() ? ' · modified' : '' }}</span>
+    </h1>
+    @if (!readOnly()) {
+      <button mat-icon-button (click)="format()" matTooltip="Format (comments are removed)">
+        <mat-icon>format_align_left</mat-icon>
+      </button>
+    }
+    <button mat-icon-button (click)="check()" [disabled]="busy()" matTooltip="Check with sing-box">
+      <mat-icon>fact_check</mat-icon>
+    </button>
+    @if (!readOnly()) {
+      <button mat-flat-button (click)="save()" [disabled]="!dirty() || busy()">
+        <mat-icon>save</mat-icon> Save
+      </button>
+    }
+  </header>
+
+  @if (busy()) {
+    <mat-progress-bar mode="indeterminate" />
+  }
+  @if (readOnly()) {
+    <p class="muted hint">Remote profiles are read-only; they are replaced on every update.</p>
+  }
+
+  <app-json-editor class="editor" [value]="content()" [readOnly]="readOnly()" (valueChange)="content.set($event)" />
+</div>

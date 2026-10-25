@@ -1,0 +1,72 @@
+:host {
+  display: contents;
+}
+
+.page {
+  position: relative;
+  overflow: hidden;
+}
+
+.level {
+  width: 140px;
+}
+
+.search {
+  width: 100%;
+  margin-bottom: 12px;
+}
+
+.viewport {
+  flex: 1;
+  overflow: auto;
+  border: 1px solid var(--mat-sys-outline-variant);
+  border-radius: 12px;
+  padding: 8px 12px;
+  font-size: 12px;
+  line-height: 18px;
+  background: var(--mat-sys-surface-container-lowest);
+}
+
+.line {
+  display: flex;
+  gap: 8px;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.lvl {
+  flex: 0 0 44px;
+  color: var(--mat-sys-on-surface-variant);
+}
+
+.line[data-level='warn'] .lvl {
+  color: #c98a00;
+}
+
+.line[data-level='error'],
+.line[data-level='fatal'],
+.line[data-level='panic'] {
+  .lvl,
+  .msg {
+    color: var(--mat-sys-error);
+  }
+}
+
+.line[data-level='debug'],
+.line[data-level='trace'] {
+  .msg {
+    color: var(--mat-sys-on-surface-variant);
+  }
+}
+
+.empty {
+  padding: 24px;
+  text-align: center;
+  font-family: Roboto, sans-serif;
+}
+
+.to-bottom {
+  position: absolute;
+  right: 40px;
+  bottom: 40px;
+}

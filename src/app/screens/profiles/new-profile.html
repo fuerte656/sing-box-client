@@ -1,0 +1,72 @@
+<div class="page">
+  <header class="page-header">
+    <button mat-icon-button (click)="back()"><mat-icon>arrow_back</mat-icon></button>
+    <h1>New Profile</h1>
+    <button mat-flat-button (click)="create()" [disabled]="!valid() || creating()">Create</button>
+  </header>
+  @if (creating()) {
+    <mat-progress-bar mode="indeterminate" />
+  }
+
+  <form class="form" (ngSubmit)="create()">
+    <h2 class="section-title">Basic information</h2>
+    <mat-form-field appearance="outline">
+      <mat-label>Name</mat-label>
+      <input matInput name="name" required [ngModel]="name()" (ngModelChange)="name.set($event)" />
+    </mat-form-field>
+
+    <div class="field-label">Type</div>
+    <mat-button-toggle-group [value]="type()" (change)="type.set($event.value)" hideSingleSelectionIndicator>
+      <mat-button-toggle value="local">Local</mat-button-toggle>
+      <mat-button-toggle value="remote">Remote</mat-button-toggle>
+    </mat-button-toggle-group>
+
+    @if (type() === 'local') {
+      <div class="field-label">Source</div>
+      <mat-button-toggle-group [value]="source()" (change)="source.set($event.value)" hideSingleSelectionIndicator>
+        <mat-button-toggle value="create">Create new</mat-button-toggle>
+        <mat-button-toggle value="import">Import file</mat-button-toggle>
+      </mat-button-toggle-group>
+      @if (source() === 'import') {
+        <div class="file-row">
+          <mat-form-field appearance="outline" class="grow">
+            <mat-label>File</mat-label>
+            <input matInput name="file" readonly [value]="importPath()" (click)="browse()" />
+          </mat-form-field>
+          <button mat-stroked-button type="button" (click)="browse()">Browse…</button>
+        </div>
+      }
+    } @else {
+      <h2 class="section-title">Remote configuration</h2>
+      <mat-form-field appearance="outline">
+        <mat-label>URL</mat-label>
+        <input
+          matInput
+          name="url"
+          type="url"
+          required
+          placeholder="https://"
+          [ngModel]="remoteUrl()"
+          (ngModelChange)="remoteUrl.set($event)"
+        />
+      </mat-form-field>
+      <mat-slide-toggle name="autoUpdate" [ngModel]="autoUpdate()" (ngModelChange)="autoUpdate.set($event)">
+        Auto update
+      </mat-slide-toggle>
+      @if (autoUpdate()) {
+        <mat-form-field appearance="outline" class="interval">
+          <mat-label>Auto update interval (minutes)</mat-label>
+          <input
+            matInput
+            name="interval"
+            type="number"
+            [min]="minInterval"
+            [ngModel]="autoUpdateInterval()"
+            (ngModelChange)="autoUpdateInterval.set(+$event)"
+          />
+          <mat-hint>Minimum {{ minInterval }} minutes</mat-hint>
+        </mat-form-field>
+      }
+    }
+  </form>
+</div>

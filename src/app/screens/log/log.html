@@ -1,0 +1,60 @@
+<div class="page">
+  <header class="page-header">
+    <h1>Log</h1>
+    <mat-form-field appearance="outline" subscriptSizing="dynamic" class="level">
+      <mat-label>Level</mat-label>
+      <mat-select [value]="level()" (valueChange)="level.set($event)">
+        @for (l of levels; track l) {
+          <mat-option [value]="l">{{ l }}</mat-option>
+        }
+      </mat-select>
+    </mat-form-field>
+    <button mat-icon-button (click)="togglePause()" [matTooltip]="paused() ? 'Resume' : 'Pause'">
+      <mat-icon>{{ paused() ? 'play_arrow' : 'pause' }}</mat-icon>
+    </button>
+    <button mat-icon-button [matMenuTriggerFor]="more" matTooltip="More options">
+      <mat-icon>more_vert</mat-icon>
+    </button>
+    <mat-menu #more="matMenu">
+      <button mat-menu-item (click)="copy()">
+        <mat-icon>content_copy</mat-icon>
+        <span>Copy to clipboard</span>
+      </button>
+      <button mat-menu-item (click)="save()">
+        <mat-icon>save</mat-icon>
+        <span>Save to file</span>
+      </button>
+      <button mat-menu-item (click)="clear()">
+        <mat-icon>delete</mat-icon>
+        <span>Clear logs</span>
+      </button>
+    </mat-menu>
+  </header>
+
+  <mat-form-field appearance="outline" subscriptSizing="dynamic" class="search">
+    <mat-icon matPrefix>search</mat-icon>
+    <input matInput placeholder="Search logs" [ngModel]="query()" (ngModelChange)="query.set($event)" />
+    @if (query()) {
+      <button matSuffix mat-icon-button (click)="query.set('')"><mat-icon>close</mat-icon></button>
+    }
+  </mat-form-field>
+
+  <div class="viewport mono" #viewport (scroll)="onScroll()">
+    @for (entry of visible(); track entry.id) {
+      <div class="line" [attr.data-level]="entry.level">
+        <span class="lvl">{{ entry.level.toUpperCase() }}</span>
+        <span class="msg">{{ entry.message }}</span>
+      </div>
+    } @empty {
+      <div class="empty muted">
+        {{ box.status() === 'stopped' ? 'Service is not running.' : 'No logs yet.' }}
+      </div>
+    }
+  </div>
+
+  @if (!followTail()) {
+    <button mat-mini-fab class="to-bottom" (click)="scrollToBottom()" matTooltip="Scroll to bottom">
+      <mat-icon>arrow_downward</mat-icon>
+    </button>
+  }
+</div>

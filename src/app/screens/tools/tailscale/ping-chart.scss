@@ -1,0 +1,186 @@
+:host {
+  display: block;
+  position: relative;
+  padding: 12px 16px 8px;
+}
+
+.stats {
+  display: flex;
+  padding-right: 40px; // room for the table toggle
+  align-items: flex-start;
+  gap: 24px;
+  flex-wrap: wrap;
+  margin-bottom: 8px;
+}
+
+.stat {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 52px;
+
+  &.wide {
+    flex: 1;
+    min-width: 160px;
+  }
+}
+
+.label {
+  font: var(--mat-sys-label-medium);
+  color: var(--mat-sys-on-surface-variant);
+}
+
+.value {
+  font: var(--mat-sys-title-medium);
+  font-variant-numeric: tabular-nums;
+  color: var(--mat-sys-on-surface);
+
+  small {
+    font: var(--mat-sys-body-small);
+    color: var(--mat-sys-on-surface-variant);
+  }
+}
+
+.path-value {
+  font: var(--mat-sys-body-medium);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 280px;
+}
+
+.table-toggle {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+}
+
+.plot {
+  position: relative;
+  width: 100%;
+
+  svg {
+    display: block;
+    touch-action: none;
+  }
+}
+
+// Recessive axes/grid: solid hairlines one step off the surface.
+.grid {
+  stroke: var(--mat-sys-outline-variant);
+  stroke-width: 1;
+  shape-rendering: crispEdges;
+}
+
+.tick {
+  fill: var(--mat-sys-on-surface-variant);
+  font: var(--mat-sys-label-small);
+  font-variant-numeric: tabular-nums;
+}
+
+.line {
+  fill: none;
+  stroke: var(--mat-sys-primary);
+  stroke-width: 2;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+}
+
+// Dots carry a 2px surface ring so they stay legible over the line.
+.end-dot,
+.hover-dot {
+  fill: var(--mat-sys-primary);
+  stroke: var(--mat-sys-surface-container);
+  stroke-width: 2;
+}
+
+.crosshair {
+  stroke: var(--mat-sys-outline);
+  stroke-width: 1;
+  shape-rendering: crispEdges;
+}
+
+.failure {
+  circle {
+    fill: var(--mat-sys-error);
+    stroke: var(--mat-sys-surface-container);
+    stroke-width: 2;
+  }
+
+  path {
+    stroke: var(--mat-sys-on-error);
+    stroke-width: 1.5;
+    stroke-linecap: round;
+  }
+}
+
+.tooltip {
+  position: absolute;
+  top: 4px;
+  transform: translateX(10px);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: var(--mat-sys-inverse-surface);
+  color: var(--mat-sys-inverse-on-surface);
+  font: var(--mat-sys-body-small);
+  white-space: nowrap;
+  pointer-events: none;
+  box-shadow: var(--mat-sys-level2);
+
+  &.flip {
+    transform: translateX(calc(-100% - 10px));
+  }
+
+  strong {
+    font: var(--mat-sys-title-small);
+  }
+
+  .muted {
+    color: inherit;
+    opacity: 0.75;
+  }
+}
+
+.empty {
+  position: absolute;
+  inset: 0 0 22px 52px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font: var(--mat-sys-body-medium);
+  pointer-events: none;
+}
+
+.table-wrap {
+  max-height: 220px;
+  overflow-y: auto;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font: var(--mat-sys-body-medium);
+
+  th {
+    position: sticky;
+    top: 0;
+    background: var(--mat-sys-surface-container);
+    text-align: left;
+    font: var(--mat-sys-label-medium);
+    color: var(--mat-sys-on-surface-variant);
+    padding: 6px 8px;
+  }
+
+  td {
+    padding: 4px 8px;
+    border-top: 1px solid var(--mat-sys-outline-variant);
+  }
+
+  .num {
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+  }
+}

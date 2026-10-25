@@ -1,0 +1,116 @@
+<div class="page">
+  <header class="page-header">
+    <button mat-icon-button (click)="back()"><mat-icon>arrow_back</mat-icon></button>
+    <h1>
+      {{ title() }}
+      @if (peer(); as p) {
+        <span class="subtitle" [class.ok]="p.online" [class.muted]="!p.online">
+          {{ p.online ? 'Connected' : 'Not connected' }}
+        </span>
+      }
+    </h1>
+  </header>
+
+  @if (peer(); as p) {
+    <div class="content">
+      <h2 class="section-title">Tailscale addresses</h2>
+      <div class="group">
+        @for (row of addresses(); track row.label) {
+          <div class="item">
+            <div class="text">
+              <span class="title mono ellipsis">{{ row.value }}</span>
+              <span class="sub muted">{{ row.label }}</span>
+            </div>
+            <button mat-icon-button (click)="copy(row.value)" matTooltip="Copy">
+              <mat-icon>content_copy</mat-icon>
+            </button>
+          </div>
+        }
+      </div>
+
+      @if (!isSelf()) {
+        <div class="section-row">
+          <h2 class="section-title">Ping</h2>
+          <button mat-stroked-button (click)="togglePing()" [disabled]="!p.online && !pinging()">
+            <mat-icon>{{ pinging() ? 'stop' : 'play_arrow' }}</mat-icon>
+            {{ pinging() ? 'Stop' : 'Start' }}
+          </button>
+        </div>
+        <div class="group">
+          <app-ping-chart [samples]="pingResults()" [active]="pinging()" />
+        </div>
+      }
+
+      @if (canSendFiles()) {
+        <h2 class="section-title">Taildrop</h2>
+        <div class="group">
+          <div
+            class="drop-zone"
+            [class.dragging]="dragging()"
+            (click)="chooseFiles()"
+            (dragover)="onDragOver($event)"
+            (dragleave)="dragging.set(false)"
+            (drop)="onDrop($event)"
+          >
+            @if (sending()) {
+              <span>Sending…</span>
+              <mat-progress-bar mode="indeterminate" />
+            } @else {
+              <mat-icon>upload_file</mat-icon>
+              <span>Drop files here to send, or click to choose</span>
+            }
+          </div>
+        </div>
+      }
+
+      @if (!isSelf() && p.online) {
+        <h2 class="section-title">SSH</h2>
+        <div class="group">
+          <div class="item">
+            <mat-form-field appearance="outline" subscriptSizing="dynamic" class="ssh-user">
+              <mat-label>User</mat-label>
+              <input matInput placeholder="current user" [ngModel]="sshUser()" (ngModelChange)="sshUser.set($event)" />
+            </mat-form-field>
+            <button mat-flat-button (click)="openSsh()">
+              <mat-icon>terminal</mat-icon> Connect
+            </button>
+          </div>
+          <div class="item muted hint">
+            Opens the system ssh client in a terminal. The peer must be reachable through a TUN inbound.
+          </div>
+        </div>
+      }
+
+      <h2 class="section-title">Details</h2>
+      <div class="group">
+        <dl class="details">
+          <dt>Key expiry</dt>
+          <dd>{{ keyExpiry() }}</dd>
+          <dt>OS</dt>
+          <dd class="mono">{{ p.os || '—' }}</dd>
+          @if (p.exitNode || p.exitNodeOption) {
+            <dt>Exit node</dt>
+            <dd>{{ p.exitNode ? 'Active' : 'Available' }}</dd>
+          }
+          @if (!p.online && p.lastSeen) {
+            <dt>Last seen</dt>
+            <dd>{{ lastSeen(p.lastSeen) }}</dd>
+          }
+          @if (p.rxBytes || p.txBytes) {
+            <dt>Traffic</dt>
+            <dd>↓ {{ p.rxBytes | bytes }} ↑ {{ p.txBytes | bytes }}</dd>
+          }
+          @if (p.shareeNode) {
+            <dt>Shared in</dt>
+            <dd>Yes</dd>
+          }
+        </dl>
+      </div>
+    </div>
+  } @else {
+    <div class="empty-state">
+      <mat-icon>devices</mat-icon>
+      <span>Peer not found.</span>
+    </div>
+  }
+</div>

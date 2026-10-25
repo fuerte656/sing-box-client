@@ -1,0 +1,56 @@
+.card {
+  height: 100%;
+}
+
+mat-card-header {
+  align-items: center;
+  padding-right: 8px;
+}
+
+.spacer {
+  flex: 1;
+}
+
+.list {
+  display: flex;
+  flex-direction: column;
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 0;
+  border-radius: 12px;
+  cursor: pointer;
+
+  &:hover {
+    background: var(--mat-sys-surface-container-high);
+  }
+
+  &.selected .name {
+    color: var(--mat-sys-primary);
+  }
+}
+
+.info {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+}
+
+.name {
+  font: var(--mat-sys-body-large);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.meta {
+  font: var(--mat-sys-body-small);
+}
+
+.empty {
+  margin: 8px 0;
+}

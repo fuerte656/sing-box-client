@@ -1,0 +1,80 @@
+<div class="page">
+  <header class="page-header">
+    <button mat-icon-button (click)="back()"><mat-icon>arrow_back</mat-icon></button>
+    <h1>{{ target() || 'Connection' }}</h1>
+    @if (connection(); as c) {
+      @if (!c.closedAt) {
+        <button mat-stroked-button (click)="close()"><mat-icon>close</mat-icon> Close</button>
+      }
+    }
+  </header>
+
+  @if (connection(); as c) {
+    <div class="sections">
+      <mat-card appearance="outlined">
+        <mat-card-header><mat-card-title>Basic</mat-card-title></mat-card-header>
+        <mat-card-content>
+          <dl>
+            <dt>State</dt>
+            <dd>{{ c.closedAt ? 'Closed' : 'Active' }}</dd>
+            <dt>Created at</dt>
+            <dd>{{ c.start | date: 'medium' }}</dd>
+            @if (c.closedAt) {
+              <dt>Closed at</dt>
+              <dd>{{ c.closedAt | date: 'medium' }}</dd>
+            }
+            <dt>Duration</dt>
+            <dd>{{ duration() }}</dd>
+            <dt>Uplink</dt>
+            <dd>{{ c.upload | bytes }} @if (!c.closedAt) { ({{ c.uploadSpeed | speed }}) }</dd>
+            <dt>Downlink</dt>
+            <dd>{{ c.download | bytes }} @if (!c.closedAt) { ({{ c.downloadSpeed | speed }}) }</dd>
+          </dl>
+        </mat-card-content>
+      </mat-card>
+
+      <mat-card appearance="outlined">
+        <mat-card-header><mat-card-title>Metadata</mat-card-title></mat-card-header>
+        <mat-card-content>
+          <dl>
+            <dt>Inbound type</dt>
+            <dd>{{ c.metadata.type }}</dd>
+            <dt>Network</dt>
+            <dd>{{ c.metadata.network }}</dd>
+            <dt>Source</dt>
+            <dd class="mono">{{ c.metadata.sourceIP }}:{{ c.metadata.sourcePort }}</dd>
+            <dt>Destination</dt>
+            <dd class="mono">{{ c.metadata.destinationIP || '-' }}:{{ c.metadata.destinationPort }}</dd>
+            @if (c.metadata.host) {
+              <dt>Domain</dt>
+              <dd class="mono">{{ c.metadata.host }}</dd>
+            }
+            <dt>Match rule</dt>
+            <dd>{{ c.rule }}{{ c.rulePayload ? ' => ' + c.rulePayload : '' }}</dd>
+            <dt>Outbound</dt>
+            <dd>{{ c.chains[0] }}</dd>
+            <dt>Chain</dt>
+            <dd>{{ c.chains.slice().reverse().join(' → ') }}</dd>
+          </dl>
+        </mat-card-content>
+      </mat-card>
+
+      @if (c.metadata.processPath) {
+        <mat-card appearance="outlined">
+          <mat-card-header><mat-card-title>Process</mat-card-title></mat-card-header>
+          <mat-card-content>
+            <dl>
+              <dt>Path</dt>
+              <dd class="mono">{{ c.metadata.processPath }}</dd>
+            </dl>
+          </mat-card-content>
+        </mat-card>
+      }
+    </div>
+  } @else {
+    <div class="empty-state">
+      <mat-icon>help</mat-icon>
+      <span>Connection not found.</span>
+    </div>
+  }
+</div>

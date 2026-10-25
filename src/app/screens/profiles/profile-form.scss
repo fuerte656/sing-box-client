@@ -1,0 +1,51 @@
+:host {
+  display: contents;
+}
+
+.page {
+  overflow-y: auto;
+}
+
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-width: 640px;
+}
+
+.section-title:first-child {
+  margin-top: 8px;
+}
+
+.field-label {
+  font: var(--mat-sys-label-large);
+  color: var(--mat-sys-on-surface-variant);
+  margin-top: 8px;
+}
+
+mat-button-toggle-group {
+  align-self: flex-start;
+  margin-bottom: 8px;
+}
+
+.file-row {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.grow {
+  flex: 1;
+}
+
+.interval {
+  max-width: 320px;
+  margin-top: 8px;
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 8px;
+}
