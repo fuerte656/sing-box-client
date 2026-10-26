@@ -184,6 +184,8 @@ export class BoxService {
       }
       this.corePid = await this.platform.resolveCorePid(this.process!.pid);
       void this.instance.setCorePid(this.corePid).catch(() => undefined);
+      // Stops sing-box if the app dies without stopping it.
+      void this.platform.watchCore(NL_PID, this.corePid).catch(() => undefined);
       this.clash.connect(endpoint);
       if (daemonEndpoint) this.daemon.connect(daemonEndpoint);
       this.status.set('started');
@@ -274,6 +276,14 @@ export class BoxService {
       await delay(300);
     }
     return false;
+  }
+
+  /** Last resort when quitting hangs: kills sing-box and its shell, bypassing the task queue. */
+  async kill(): Promise<void> {
+    const proc = this.process;
+    if (!proc) return;
+    await this.platform.forceKill(this.corePid ?? proc.pid).catch(() => undefined);
+    await this.platform.forceKill(proc.pid).catch(() => undefined);
   }
 
   /** Graceful stop first (so sing-box restores the system proxy), then a forced kill. */

@@ -3,6 +3,7 @@ import { cyrillicToLatin, normalizeText } from '../../shared/text-utils';
 import { CorePlatform, ExecResult, TunPrivilegeResult } from './core-platform';
 import INTERRUPT_SCRIPT from './scripts/interrupt.ps1';
 import CONSOLE_SOURCE from './scripts/SingBoxClientConsole.cs';
+import WATCH_CORE_SCRIPT from './scripts/watch-core.ps1';
 
 /** PowerShell single-quoted (literal) string. */
 const psQuote = (s: string) => `'${s.replace(/'/g, "''")}'`;
@@ -72,6 +73,14 @@ export class WindowsCorePlatform extends CorePlatform {
     await this.exec(`taskkill /PID ${pid} /T /F`);
   }
 
+  async watchCore(appPid: number, corePid: number): Promise<void> {
+    await this.powershell(
+      WATCH_CORE_SCRIPT,
+      `-AppPid ${appPid} -CorePid ${corePid} -ConsoleSource ${psQuote(CONSOLE_SOURCE)}`,
+      true,
+    );
+  }
+
   async processImageName(pid: number): Promise<string | null> {
     // CSV row: "image","pid","session","#","mem"; tasklist prints an INFO line when nothing matches.
     const result = await this.exec(`tasklist /FI "PID eq ${pid}" /FO CSV /NH`);
@@ -123,18 +132,22 @@ export class WindowsCorePlatform extends CorePlatform {
     return 'relaunch';
   }
 
-  private exec(command: string): Promise<ExecResult> {
-    return os.execCommand(command);
+  /** `background` returns right away and leaves the command running, even after the app exits. */
+  private exec(command: string, background = false): Promise<ExecResult> {
+    return os.execCommand(command, { background });
   }
 
   /** Runs a script via -EncodedCommand (UTF-16LE base64) so no quoting or temp files are needed. */
-  private powershell(script: string, args = ''): Promise<ExecResult> {
+  private powershell(script: string, args = '', background = false): Promise<ExecResult> {
     const body = args ? `& {${script}} ${args}` : script;
     let binary = '';
     for (let i = 0; i < body.length; i++) {
       const code = body.charCodeAt(i);
       binary += String.fromCharCode(code & 0xff, code >> 8);
     }
-    return this.exec(`powershell -NoProfile -NonInteractive -ExecutionPolicy Bypass -EncodedCommand ${btoa(binary)}`);
+    return this.exec(
+      `powershell -NoProfile -NonInteractive -ExecutionPolicy Bypass -EncodedCommand ${btoa(binary)}`,
+      background,
+    );
   }
 }

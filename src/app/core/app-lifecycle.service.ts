@@ -5,10 +5,14 @@ import { CoreBinaryService } from './core-binary.service';
 import { TaildropService } from './daemon/taildrop.service';
 import { InstanceService } from './instance.service';
 import { NativeService } from './native.service';
+import { CorePlatform } from './platform/core-platform';
 import { ProfileService } from './profile.service';
 import { SettingsService } from './settings.service';
 import { TrayService } from './tray.service';
 import { WindowService } from './window.service';
+
+/** A clean quit can take ~12 s when sing-box has to be killed after its graceful stop; past this it is force-quit. */
+const QUIT_TIMEOUT = 20_000;
 
 /** App start-up, window-close handling and quitting. */
 @Injectable({ providedIn: 'root' })
@@ -22,6 +26,7 @@ export class AppLifecycleService {
   private readonly window = inject(WindowService);
   private readonly instance = inject(InstanceService);
   private readonly taildrop = inject(TaildropService);
+  private readonly platform = inject(CorePlatform);
   private quitting = false;
 
   async initialize(): Promise<void> {
@@ -48,14 +53,25 @@ export class AppLifecycleService {
     }
   }
 
+  /** Stops sing-box cleanly and exits; force-quits if that hangs or Quit is chosen again. */
   async quit(): Promise<void> {
-    if (this.quitting) return;
+    if (this.quitting) return this.forceQuit();
     this.quitting = true;
+    setTimeout(() => void this.forceQuit(), QUIT_TIMEOUT);
     await this.window.saveBounds().catch(() => undefined);
     await this.box.stop();
     await this.settings.flush();
     await this.instance.release().catch(() => undefined);
     await app.exit();
+  }
+
+  /**
+   * Kills sing-box, then this process (app.exit() itself may be what hangs). The next launch
+   * cleans up the stale instance lock.
+   */
+  private async forceQuit(): Promise<void> {
+    await this.box.kill();
+    await this.platform.forceKill(NL_PID);
   }
 
   private async onWindowClose(): Promise<void> {

@@ -64,6 +64,17 @@ export abstract class PosixCorePlatform extends CorePlatform {
     await this.exec(`pkill -KILL -P ${pid} 2>/dev/null; kill -KILL ${pid} 2>/dev/null; true`);
   }
 
+  async watchCore(appPid: number, corePid: number): Promise<void> {
+    // Polls both PIDs; once the app is gone: SIGINT, up to 5 s to exit, then SIGKILL.
+    await os.execCommand(
+      `while kill -0 ${appPid} 2>/dev/null; do kill -0 ${corePid} 2>/dev/null || exit 0; sleep 1; done; ` +
+        `kill -INT ${corePid} 2>/dev/null || exit 0; ` +
+        `i=0; while [ $i -lt 25 ]; do kill -0 ${corePid} 2>/dev/null || exit 0; sleep 0.2; i=$((i+1)); done; ` +
+        `kill -KILL ${corePid} 2>/dev/null; true`,
+      { background: true },
+    );
+  }
+
   async processImageName(pid: number): Promise<string | null> {
     // `comm` is truncated to 15 characters on Linux, so use the executable from argv[0].
     const result = await this.exec(`ps -p ${pid} -o args=`);

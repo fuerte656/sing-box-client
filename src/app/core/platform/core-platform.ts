@@ -61,6 +61,12 @@ export abstract class CorePlatform {
   /** Terminates the process and its children. */
   abstract forceKill(pid: number): Promise<void>;
 
+  /**
+   * Starts a detached watcher that stops sing-box (gracefully, then by force) if the app exits
+   * while it is still running, e.g. after a crash or a kill. The watcher ends with sing-box.
+   */
+  abstract watchCore(appPid: number, corePid: number): Promise<void>;
+
   /** Executable file name of a running process (e.g. "sing-box-client-win_x64.exe"), or null if not running. */
   abstract processImageName(pid: number): Promise<string | null>;
 
