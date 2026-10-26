@@ -62,10 +62,12 @@ export abstract class CorePlatform {
   abstract forceKill(pid: number): Promise<void>;
 
   /**
-   * Starts a detached watcher that stops sing-box (gracefully, then by force) if the app exits
-   * while it is still running, e.g. after a crash or a kill. The watcher ends with sing-box.
+   * Starts a detached watchdog for the app's lifetime. Once the app is gone without stopping
+   * sing-box (crash, kill), it stops sing-box (gracefully, then by force), taking the PID from the
+   * instance lock at `lockPath`. Where supported, it also kills the app when the UI has lost its
+   * connection to the Neutralino runtime on `appPort`, since nothing (not even Quit) works then.
    */
-  abstract watchCore(appPid: number, corePid: number): Promise<void>;
+  abstract watchApp(appPid: number, appPort: number | undefined, lockPath: string): Promise<void>;
 
   /** Executable file name of a running process (e.g. "sing-box-client-win_x64.exe"), or null if not running. */
   abstract processImageName(pid: number): Promise<string | null>;
@@ -85,6 +87,17 @@ export abstract class CorePlatform {
 
   /** Opens the file manager at a file's folder, with the file selected where the OS supports it. */
   abstract revealFile(path: string): Promise<void>;
+
+  /** Opens a folder in the file manager. */
+  abstract openFolder(path: string): Promise<void>;
+
+  /** Opens an http(s) URL in the default browser. */
+  async openUrl(url: string): Promise<void> {
+    if (!/^https?:\/\//i.test(url)) throw new Error(`Not a web URL: ${url}`);
+    await this.launchUrl(url);
+  }
+
+  protected abstract launchUrl(url: string): Promise<void>;
 
   /** Runs an interactive command (e.g. SSH) in a new terminal window. */
   abstract openTerminal(command: string, title: string): Promise<void>;

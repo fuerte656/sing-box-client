@@ -28,6 +28,16 @@ export class MacosCorePlatform extends PosixCorePlatform {
     if (result.exitCode !== 0) throw new Error(result.stdErr.trim() || 'Failed to reveal file in Finder');
   }
 
+  async openFolder(path: string): Promise<void> {
+    const result = await this.exec(`open ${this.quote(path)}`);
+    if (result.exitCode !== 0) throw new Error(result.stdErr.trim() || 'Failed to open folder in Finder');
+  }
+
+  protected async launchUrl(url: string): Promise<void> {
+    const result = await this.exec(`open ${this.quote(url)}`);
+    if (result.exitCode !== 0) throw new Error(result.stdErr.trim() || 'Failed to open the browser');
+  }
+
   async openTerminal(command: string, title: string): Promise<void> {
     const shellCommand = `printf '\\033]0;%s\\007' ${this.quote(title)}; ${command}`;
     const script = `tell application "Terminal"

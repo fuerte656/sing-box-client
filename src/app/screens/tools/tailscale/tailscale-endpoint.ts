@@ -12,7 +12,7 @@ import { RouterLink } from '@angular/router';
 import { DaemonService } from '../../../core/daemon/daemon.service';
 import { TaildropService } from '../../../core/daemon/taildrop.service';
 import { TailscalePeer } from '../../../core/daemon/models';
-import { NativeService } from '../../../core/native.service';
+import { CorePlatform } from '../../../core/platform/core-platform';
 import { Dialogs } from '../../../shared/dialogs';
 import { allPeers, ipv4, isRunning, peerTitle, relativeTime, stateLabel } from './tailscale-utils';
 
@@ -35,7 +35,7 @@ import { allPeers, ipv4, isRunning, peerTitle, relativeTime, stateLabel } from '
 export class TailscaleEndpoint {
   private readonly daemon = inject(DaemonService);
   private readonly taildrop = inject(TaildropService);
-  private readonly native = inject(NativeService);
+  private readonly platform = inject(CorePlatform);
   private readonly dialogs = inject(Dialogs);
   private readonly location = inject(Location);
 
@@ -81,7 +81,7 @@ export class TailscaleEndpoint {
   }
 
   async openAuthUrl(url: string): Promise<void> {
-    await this.native.open(url);
+    await this.platform.openUrl(url);
   }
 
   async setExitNode(stableID: string): Promise<void> {

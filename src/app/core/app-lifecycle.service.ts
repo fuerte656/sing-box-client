@@ -35,6 +35,10 @@ export class AppLifecycleService {
     try {
       // Only one copy runs: a running instance is asked to quit (it stops sing-box first).
       await this.instance.claim(() => this.quit());
+      // Stops sing-box if this copy dies, and kills this copy if its UI is lost (Quit cannot work then).
+      void this.platform
+        .watchApp(NL_PID, NL_PORT, await this.instance.lockPath())
+        .catch((e) => console.warn('watchdog unavailable', e));
       await this.settings.load();
       await this.profiles.load();
       await this.core.refresh();

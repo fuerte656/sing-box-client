@@ -49,9 +49,17 @@ export class LinuxCorePlatform extends PosixCorePlatform {
         `org.freedesktop.FileManager1.ShowItems array:string:${this.quote(uri)} string:''`,
     );
     if (select.exitCode === 0) return;
-    const folder = path.slice(0, path.lastIndexOf('/')) || '/';
-    const result = await this.exec(`xdg-open ${this.quote(folder)}`);
+    await this.openFolder(path.slice(0, path.lastIndexOf('/')) || '/');
+  }
+
+  async openFolder(path: string): Promise<void> {
+    const result = await this.exec(`xdg-open ${this.quote(path)}`);
     if (result.exitCode !== 0) throw new Error(result.stdErr.trim() || 'No file manager found');
+  }
+
+  protected async launchUrl(url: string): Promise<void> {
+    const result = await this.exec(`xdg-open ${this.quote(url)}`);
+    if (result.exitCode !== 0) throw new Error(result.stdErr.trim() || 'No browser found');
   }
 
   async openTerminal(command: string, title: string): Promise<void> {

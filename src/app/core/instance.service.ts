@@ -67,10 +67,15 @@ export class InstanceService {
     this.watcherId = await filesystem.createWatcher(dir);
   }
 
+  /** The lock file, which also records the running sing-box PID. */
+  lockPath(): Promise<string> {
+    return this.native.path(DIR, LOCK_FILE);
+  }
+
   /** Records the running sing-box PID (null when stopped) so a later copy can clean it up. */
   async setCorePid(corePid: number | null): Promise<void> {
     if (!this.lock) return;
-    const lockPath = await this.native.path(DIR, LOCK_FILE);
+    const lockPath = await this.lockPath();
     const current = await this.native.readJson<InstanceLock>(lockPath);
     if (current && current.pid !== NL_PID) return; // another copy has taken over
     this.lock = { ...this.lock, corePid };
@@ -79,7 +84,7 @@ export class InstanceService {
 
   /** Removes the lock on a normal exit, unless another instance already owns it. */
   async release(): Promise<void> {
-    const lockPath = await this.native.path(DIR, LOCK_FILE);
+    const lockPath = await this.lockPath();
     const lock = await this.native.readJson<InstanceLock>(lockPath);
     if (lock?.pid === NL_PID) await this.native.remove(lockPath);
   }

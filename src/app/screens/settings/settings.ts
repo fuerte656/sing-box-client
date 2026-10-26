@@ -143,11 +143,11 @@ export class Settings {
   }
 
   async openDataDir(): Promise<void> {
-    await this.native.open(await this.native.dataDir());
+    await this.platform.openFolder(await this.native.dataDir());
   }
 
   async openCoreDir(): Promise<void> {
-    await this.native.open(await this.core.coreDir());
+    await this.platform.openFolder(await this.core.coreDir());
   }
 
   async clearWorkDir(): Promise<void> {
@@ -200,7 +200,7 @@ export class Settings {
   }
 
   async openTaildropFolder(): Promise<void> {
-    await this.native.open(await this.taildrop.folder());
+    await this.platform.openFolder(await this.taildrop.folder());
   }
 
   private async refreshTaildropFolder(): Promise<void> {
@@ -212,7 +212,7 @@ export class Settings {
   }
 
   async openReleases(): Promise<void> {
-    await this.native.open(this.latest()?.htmlUrl ?? 'https://github.com/SagerNet/sing-box/releases');
+    await this.platform.openUrl(this.latest()?.htmlUrl ?? 'https://github.com/SagerNet/sing-box/releases');
   }
 
   private async refreshWorkDirSize(): Promise<void> {

@@ -184,8 +184,6 @@ export class BoxService {
       }
       this.corePid = await this.platform.resolveCorePid(this.process!.pid);
       void this.instance.setCorePid(this.corePid).catch(() => undefined);
-      // Stops sing-box if the app dies without stopping it.
-      void this.platform.watchCore(NL_PID, this.corePid).catch(() => undefined);
       this.clash.connect(endpoint);
       if (daemonEndpoint) this.daemon.connect(daemonEndpoint);
       this.status.set('started');

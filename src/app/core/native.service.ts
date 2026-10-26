@@ -108,9 +108,4 @@ export class NativeService {
   onProcessEvent(handler: (event: ProcessEvent) => void) {
     return events.on('spawnedProcess', (ev) => handler((ev as CustomEvent<ProcessEvent>).detail));
   }
-
-  /** Opens a URL in the browser or a folder/file with the OS default handler. */
-  open(target: string) {
-    return os.open(/^[a-z]+:\/\//i.test(target) ? target : `file:///${target.replace(/^\/+/, '')}`);
-  }
 }

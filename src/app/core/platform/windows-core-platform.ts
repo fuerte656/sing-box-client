@@ -3,10 +3,24 @@ import { cyrillicToLatin, normalizeText } from '../../shared/text-utils';
 import { CorePlatform, ExecResult, TunPrivilegeResult } from './core-platform';
 import INTERRUPT_SCRIPT from './scripts/interrupt.ps1';
 import CONSOLE_SOURCE from './scripts/SingBoxClientConsole.cs';
-import WATCH_CORE_SCRIPT from './scripts/watch-core.ps1';
+import WATCH_APP_SCRIPT from './scripts/watch-app.ps1';
 
 /** PowerShell single-quoted (literal) string. */
 const psQuote = (s: string) => `'${s.replace(/'/g, "''")}'`;
+
+/**
+ * A script as PowerShell's -EncodedCommand expects it: UTF-16LE, base64. Comment lines are
+ * dropped first, since cmd.exe limits the whole command line to 8191 characters.
+ */
+function encodeCommand(script: string): string {
+  const body = script.replace(/^[ \t]*#.*(\r?\n|$)/gm, '');
+  let binary = '';
+  for (let i = 0; i < body.length; i++) {
+    const code = body.charCodeAt(i);
+    binary += String.fromCharCode(code & 0xff, code >> 8);
+  }
+  return btoa(binary);
+}
 
 export class WindowsCorePlatform extends CorePlatform {
   readonly id = 'windows';
@@ -73,10 +87,11 @@ export class WindowsCorePlatform extends CorePlatform {
     await this.exec(`taskkill /PID ${pid} /T /F`);
   }
 
-  async watchCore(appPid: number, corePid: number): Promise<void> {
+  async watchApp(appPid: number, appPort: number | undefined, lockPath: string): Promise<void> {
     await this.powershell(
-      WATCH_CORE_SCRIPT,
-      `-AppPid ${appPid} -CorePid ${corePid} -ConsoleSource ${psQuote(CONSOLE_SOURCE)}`,
+      WATCH_APP_SCRIPT,
+      `-AppPid ${appPid} -AppPort ${appPort ?? 0} -LockPath ${psQuote(this.nativePath(lockPath))} ` +
+        `-ConsoleSource ${psQuote(CONSOLE_SOURCE)}`,
       true,
     );
   }
@@ -107,6 +122,17 @@ export class WindowsCorePlatform extends CorePlatform {
     await this.exec(`explorer.exe /select,${this.quote(this.nativePath(path))}`);
   }
 
+  async openFolder(path: string): Promise<void> {
+    // Same as revealFile: explorer.exe's exit code means nothing.
+    await this.exec(`explorer.exe ${this.quote(this.nativePath(path))}`);
+  }
+
+  protected async launchUrl(url: string): Promise<void> {
+    // os.open (ShellExecute) does nothing when the app runs elevated; explorer.exe hands the
+    // URL to the user's own (non-elevated) shell, which opens the default browser.
+    await this.exec(`explorer.exe ${this.quote(url)}`);
+  }
+
   async openTerminal(command: string, title: string): Promise<void> {
     // `start` opens a new console window; the extra quotes keep cmd /k from stripping the command's own.
     const result = await this.exec(`start "${title.replace(/"/g, '')}" cmd /k "${command}"`);
@@ -120,11 +146,25 @@ export class WindowsCorePlatform extends CorePlatform {
     return (await this.exec('fltmc')).exitCode === 0;
   }
 
-  /** Relaunches the app elevated (UAC prompt); the new copy takes over from this one. */
+  /**
+   * Relaunches the app elevated (UAC prompt); the new copy takes over from this one.
+   * The elevated copy gets its own WebView2 data folder: WebView2 cannot share one between
+   * processes of different elevation, and while this copy's browser process is still around the
+   * new window ends up without a working UI (tray shown, but nothing responds, not even Quit).
+   * WEBVIEW2_USER_DATA_FOLDER overrides the folder the runtime picks; RunAs does not pass the
+   * environment on, so an elevated PowerShell sets it and starts the app from there.
+   */
   async acquireTunPrivileges(): Promise<TunPrivilegeResult> {
     const [exe, ...args] = NL_ARGS;
+    const exeName = exe.split(/[\\/]/).pop()!;
+    const userDataFolder = `${await os.getEnv('APPDATA')}\\${exeName}\\EBWebView-admin`;
     const argumentList = args.length ? ` -ArgumentList ${args.map(psQuote).join(',')}` : '';
-    const script = `Start-Process -FilePath ${psQuote(exe)}${argumentList} -WorkingDirectory ${psQuote(NL_PATH)} -Verb RunAs`;
+    const elevated =
+      `$env:WEBVIEW2_USER_DATA_FOLDER = ${psQuote(userDataFolder)}; ` +
+      `Start-Process -FilePath ${psQuote(exe)}${argumentList} -WorkingDirectory ${psQuote(NL_PATH)}`;
+    const script =
+      `Start-Process -FilePath powershell -Verb RunAs -WindowStyle Hidden ` +
+      `-ArgumentList '-NoProfile','-NonInteractive','-EncodedCommand','${encodeCommand(elevated)}'`;
     const result = await this.powershell(script);
     if (result.exitCode !== 0) {
       throw new Error(result.stdErr.trim() || 'Elevation was cancelled');
@@ -140,13 +180,8 @@ export class WindowsCorePlatform extends CorePlatform {
   /** Runs a script via -EncodedCommand (UTF-16LE base64) so no quoting or temp files are needed. */
   private powershell(script: string, args = '', background = false): Promise<ExecResult> {
     const body = args ? `& {${script}} ${args}` : script;
-    let binary = '';
-    for (let i = 0; i < body.length; i++) {
-      const code = body.charCodeAt(i);
-      binary += String.fromCharCode(code & 0xff, code >> 8);
-    }
     return this.exec(
-      `powershell -NoProfile -NonInteractive -ExecutionPolicy Bypass -EncodedCommand ${btoa(binary)}`,
+      `powershell -NoProfile -NonInteractive -ExecutionPolicy Bypass -EncodedCommand ${encodeCommand(body)}`,
       background,
     );
   }

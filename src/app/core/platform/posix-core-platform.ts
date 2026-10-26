@@ -64,13 +64,17 @@ export abstract class PosixCorePlatform extends CorePlatform {
     await this.exec(`pkill -KILL -P ${pid} 2>/dev/null; kill -KILL ${pid} 2>/dev/null; true`);
   }
 
-  async watchCore(appPid: number, corePid: number): Promise<void> {
-    // Polls both PIDs; once the app is gone: SIGINT, up to 5 s to exit, then SIGKILL.
+  async watchApp(appPid: number, _appPort: number | undefined, lockPath: string): Promise<void> {
+    // Polls the app, keeping sing-box's PID from the lock while the lock is this app's; once the
+    // app is gone: SIGINT, up to 5 s to exit, then SIGKILL. (No UI check: the lost-UI case is Windows-only.)
+    const field = (name: string) => `sed -n 's/.*"${name}": *\\([0-9]*\\).*/\\1/p' ${this.quote(lockPath)} 2>/dev/null`;
     await os.execCommand(
-      `while kill -0 ${appPid} 2>/dev/null; do kill -0 ${corePid} 2>/dev/null || exit 0; sleep 1; done; ` +
-        `kill -INT ${corePid} 2>/dev/null || exit 0; ` +
-        `i=0; while [ $i -lt 25 ]; do kill -0 ${corePid} 2>/dev/null || exit 0; sleep 0.2; i=$((i+1)); done; ` +
-        `kill -KILL ${corePid} 2>/dev/null; true`,
+      `core=; while kill -0 ${appPid} 2>/dev/null; do ` +
+        `[ "$(${field('pid')})" = ${appPid} ] && core=$(${field('corePid')}); sleep 2; done; ` +
+        `[ -n "$core" ] && ps -p "$core" -o args= 2>/dev/null | grep -q ${this.quote(this.binaryName)} || exit 0; ` +
+        `kill -INT "$core" 2>/dev/null || exit 0; ` +
+        `i=0; while [ $i -lt 25 ]; do kill -0 "$core" 2>/dev/null || exit 0; sleep 0.2; i=$((i+1)); done; ` +
+        `kill -KILL "$core" 2>/dev/null; true`,
       { background: true },
     );
   }
