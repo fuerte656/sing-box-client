@@ -1,57 +1,11 @@
 import { os } from '@neutralinojs/lib';
+import { cyrillicToLatin, normalizeText } from '../../shared/text-utils';
 import { CorePlatform, ExecResult, TunPrivilegeResult } from './core-platform';
+import INTERRUPT_SCRIPT from './scripts/interrupt.ps1';
+import CONSOLE_SOURCE from './scripts/SingBoxClientConsole.cs';
 
-/**
- * Asks a console process to shut down: the helper attaches to the target's (hidden) console,
- * installs a handler so it survives the event itself, and broadcasts CTRL_BREAK. Go maps
- * CTRL_BREAK to os.Interrupt, so sing-box exits cleanly and restores the system proxy.
- * CTRL_BREAK is used rather than CTRL_C because CTRL_C can be disabled for a process group.
- * Exit codes: 0 = exited, 1 = cannot attach, 2 = event not sent, 3 = still running after timeout.
- */
-const INTERRUPT_SCRIPT = `
-param([int]$TargetPid, [int]$TimeoutMs = 5000)
-Add-Type -TypeDefinition @'
-using System;
-using System.Runtime.InteropServices;
-public static class SingBoxClientConsole {
-  public delegate bool Handler(uint ctrlType);
-  [DllImport("kernel32.dll")] static extern bool FreeConsole();
-  [DllImport("kernel32.dll")] static extern bool AttachConsole(uint pid);
-  [DllImport("kernel32.dll")] static extern bool SetConsoleCtrlHandler(Handler handler, bool add);
-  [DllImport("kernel32.dll")] static extern bool GenerateConsoleCtrlEvent(uint ctrlEvent, uint groupId);
-  static readonly Handler Ignore = t => true;
-  public static int Interrupt(uint pid) {
-    FreeConsole();
-    if (!AttachConsole(pid)) return 1;
-    SetConsoleCtrlHandler(Ignore, true);
-    bool sent = GenerateConsoleCtrlEvent(1, 0);
-    System.Threading.Thread.Sleep(200);
-    FreeConsole();
-    return sent ? 0 : 2;
-  }
-}
-'@
-$code = [SingBoxClientConsole]::Interrupt([uint32]$TargetPid)
-if ($code -ne 0) { exit $code }
-$process = Get-Process -Id $TargetPid -ErrorAction SilentlyContinue
-if ($process -and -not $process.WaitForExit($TimeoutMs)) { exit 3 }
-exit 0
-`;
-
-const CYRILLIC_PAIRS: [string, string][] = [
-  ['а', 'a'], ['б', 'b'], ['в', 'v'], ['г', 'g'], ['д', 'd'], ['е', 'e'], ['ё', 'e'], ['ж', 'zh'],
-  ['з', 'z'], ['и', 'i'], ['й', 'y'], ['к', 'k'], ['л', 'l'], ['м', 'm'], ['н', 'n'], ['о', 'o'],
-  ['п', 'p'], ['р', 'r'], ['с', 's'], ['т', 't'], ['у', 'u'], ['ф', 'f'], ['х', 'kh'], ['ц', 'ts'],
-  ['ч', 'ch'], ['ш', 'sh'], ['щ', 'shch'], ['ъ', ''], ['ы', 'y'], ['ь', ''], ['э', 'e'], ['ю', 'yu'],
-  ['я', 'ya'], ['є', 'ye'], ['і', 'i'], ['ї', 'yi'], ['ґ', 'g'], ['ў', 'u'],
-];
-/** Lower- and upper-case Cyrillic → Latin (BGN/PCGN-style, simplified). */
-const CYRILLIC: Record<string, string> = Object.fromEntries(
-  CYRILLIC_PAIRS.flatMap(([cyr, lat]) => [
-    [cyr, lat],
-    [cyr.toUpperCase(), lat.charAt(0).toUpperCase() + lat.slice(1)],
-  ]),
-);
+/** PowerShell single-quoted (literal) string. */
+const psQuote = (s: string) => `'${s.replace(/'/g, "''")}'`;
 
 export class WindowsCorePlatform extends CorePlatform {
   readonly id = 'windows';
@@ -107,7 +61,10 @@ export class WindowsCorePlatform extends CorePlatform {
   }
 
   async stopGracefully(pid: number, timeoutMs: number): Promise<boolean> {
-    const result = await this.powershell(INTERRUPT_SCRIPT, `-TargetPid ${pid} -TimeoutMs ${timeoutMs}`);
+    const result = await this.powershell(
+      INTERRUPT_SCRIPT,
+      `-TargetPid ${pid} -TimeoutMs ${timeoutMs} -ConsoleSource ${psQuote(CONSOLE_SOURCE)}`,
+    );
     return result.exitCode === 0;
   }
 
@@ -132,19 +89,8 @@ export class WindowsCorePlatform extends CorePlatform {
    * so text is transliterated: Cyrillic to Latin, common punctuation to ASCII, the rest to "?".
    */
   protected override notificationText(text: string): string {
-    return (
-      text
-        // Cyrillic first: decomposing would turn "й" into "и" + breve.
-        .replace(/[Ѐ-ӿ]/g, (c) => CYRILLIC[c] ?? '?')
-        // Then drop accents from Latin letters (é → e).
-        .normalize('NFKD')
-        .replace(/[̀-ͯ]/g, '')
-        .replace(/[·•–—]/g, '-')
-        .replace(/[«»“”„]/g, '"')
-        .replace(/[‘’]/g, "'")
-        .replace(/…/g, '...')
-        .replace(/[^\x20-\x7e]/g, '?')
-    );
+    // Cyrillic first: decomposing would turn "й" into "и" + breve.
+    return normalizeText(cyrillicToLatin(text));
   }
 
   async revealFile(path: string): Promise<void> {
@@ -168,7 +114,6 @@ export class WindowsCorePlatform extends CorePlatform {
   /** Relaunches the app elevated (UAC prompt); the new copy takes over from this one. */
   async acquireTunPrivileges(): Promise<TunPrivilegeResult> {
     const [exe, ...args] = NL_ARGS;
-    const psQuote = (s: string) => `'${s.replace(/'/g, "''")}'`;
     const argumentList = args.length ? ` -ArgumentList ${args.map(psQuote).join(',')}` : '';
     const script = `Start-Process -FilePath ${psQuote(exe)}${argumentList} -WorkingDirectory ${psQuote(NL_PATH)} -Verb RunAs`;
     const result = await this.powershell(script);

@@ -23,6 +23,10 @@
             "browser": "src/main.ts",
             "tsConfig": "tsconfig.app.json",
             "inlineStyleLanguage": "scss",
+            "loader": {
+              ".ps1": "text",
+              ".cs": "text"
+            },
             "assets": [
               {
                 "glob": "**/*",
