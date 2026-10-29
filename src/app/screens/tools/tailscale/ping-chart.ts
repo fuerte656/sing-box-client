@@ -1,5 +1,5 @@
 import { DatePipe } from '@angular/common';
-import { Component, DestroyRef, ElementRef, afterNextRender, computed, inject, input, signal } from '@angular/core';
+import { Component, DestroyRef, ElementRef, WritableSignal, Signal, InputSignal, afterNextRender, computed, inject, input, signal } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatTooltipModule } from '@angular/material/tooltip';
@@ -10,10 +10,37 @@ export interface PingSample extends TailscalePingResponse {
   at: number;
 }
 
-export const PING_HISTORY = 60;
+export const PING_HISTORY: number = 60;
 
-const HEIGHT = 180;
-const PAD = { top: 12, right: 16, bottom: 22, left: 52 };
+const HEIGHT: number = 180;
+/** Space around the plot area, in pixels. */
+interface Padding {
+  top: number;
+  right: number;
+  bottom: number;
+  left: number;
+}
+
+interface PingStats {
+  last: PingSample | undefined;
+  min: number | null;
+  avg: number | null;
+  max: number | null;
+  loss: number | null;
+}
+
+interface Point {
+  x: number;
+  y: number;
+}
+
+/** The hovered sample, where to draw its tooltip and on which side. */
+interface HoveredSample extends Point {
+  s: PingSample;
+  flip: boolean;
+}
+
+const PAD: Padding = { top: 12, right: 16, bottom: 22, left: 52 };
 
 /** How a ping travelled, as SFA shows it. */
 export function pingPath(r: TailscalePingResponse): string {
@@ -25,8 +52,8 @@ export function pingPath(r: TailscalePingResponse): string {
 
 /** Rounds up to a 1/2/5 × 10ⁿ step so axis ticks are clean numbers. */
 function niceStep(raw: number): number {
-  const power = 10 ** Math.floor(Math.log10(raw));
-  const unit = raw / power;
+  const power: number = 10 ** Math.floor(Math.log10(raw));
+  const unit: number = raw / power;
   return (unit <= 1 ? 1 : unit <= 2 ? 2 : unit <= 5 ? 5 : 10) * power;
 }
 
@@ -41,22 +68,22 @@ function niceStep(raw: number): number {
   styleUrl: './ping-chart.scss',
 })
 export class PingChart {
-  private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
+  private readonly host: ElementRef<HTMLElement> = inject<ElementRef<HTMLElement>>(ElementRef);
 
-  readonly samples = input.required<PingSample[]>();
-  readonly active = input(false);
+  readonly samples: InputSignal<PingSample[]> = input.required<PingSample[]>();
+  readonly active: InputSignal<boolean> = input(false);
 
-  readonly width = signal(600);
-  readonly height = HEIGHT;
-  readonly pad = PAD;
-  readonly hover = signal<number | null>(null);
-  readonly showTable = signal(false);
-  readonly path = pingPath;
+  readonly width: WritableSignal<number> = signal(600);
+  readonly height: number = HEIGHT;
+  readonly pad: Padding = PAD;
+  readonly hover: WritableSignal<number | null> = signal<number | null>(null);
+  readonly showTable: WritableSignal<boolean> = signal(false);
+  readonly path: (r: TailscalePingResponse) => string = pingPath;
 
-  readonly stats = computed(() => {
-    const all = this.samples();
-    const ok = all.filter((s) => !s.error).map((s) => s.latencyMs);
-    const last = all.at(-1);
+  readonly stats: Signal<PingStats> = computed((): PingStats => {
+    const all: PingSample[] = this.samples();
+    const ok: number[] = all.filter((s) => !s.error).map((s) => s.latencyMs);
+    const last: PingSample | undefined = all.at(-1);
     return {
       last,
       min: ok.length ? Math.min(...ok) : null,
@@ -67,22 +94,22 @@ export class PingChart {
   });
 
   /** y-axis: 0 → a clean maximum just above the highest latency, 4 intervals. */
-  readonly yTicks = computed(() => {
-    const max = Math.max(10, ...this.samples().filter((s) => !s.error).map((s) => s.latencyMs));
-    const step = niceStep(max / 4);
-    const top = Math.ceil(max / step) * step;
+  readonly yTicks: Signal<number[]> = computed(() => {
+    const max: number = Math.max(10, ...this.samples().filter((s) => !s.error).map((s) => s.latencyMs));
+    const step: number = niceStep(max / 4);
+    const top: number = Math.ceil(max / step) * step;
     const ticks: number[] = [];
-    for (let v = 0; v <= top + step / 2; v += step) ticks.push(v);
+    for (let v: number = 0; v <= top + step / 2; v += step) ticks.push(v);
     return ticks;
   });
 
-  private readonly yMax = computed(() => this.yTicks().at(-1)!);
-  private readonly plotWidth = computed(() => this.width() - PAD.left - PAD.right);
-  private readonly plotHeight = HEIGHT - PAD.top - PAD.bottom;
+  private readonly yMax: Signal<number> = computed(() => this.yTicks().at(-1)!);
+  private readonly plotWidth: Signal<number> = computed(() => this.width() - PAD.left - PAD.right);
+  private readonly plotHeight: number = HEIGHT - PAD.top - PAD.bottom;
 
   /** Fixed slots for the last PING_HISTORY pings; new data enters on the right. */
   x(index: number): number {
-    const offset = PING_HISTORY - this.samples().length;
+    const offset: number = PING_HISTORY - this.samples().length;
     return PAD.left + ((offset + index) / (PING_HISTORY - 1)) * this.plotWidth();
   }
 
@@ -90,14 +117,14 @@ export class PingChart {
     return PAD.top + this.plotHeight - (ms / this.yMax()) * this.plotHeight;
   }
 
-  readonly baseline = PAD.top + (HEIGHT - PAD.top - PAD.bottom);
+  readonly baseline: number = PAD.top + (HEIGHT - PAD.top - PAD.bottom);
 
   /** The line breaks at failed pings instead of drawing through them. */
-  readonly linePath = computed(() => {
+  readonly linePath: Signal<string> = computed(() => {
     this.width();
     this.yMax();
-    let d = '';
-    let pen = false;
+    let d: string = '';
+    let pen: boolean = false;
     this.samples().forEach((s, i) => {
       if (s.error) {
         pen = false;
@@ -109,7 +136,7 @@ export class PingChart {
     return d;
   });
 
-  readonly failures = computed(() => {
+  readonly failures: Signal<number[]> = computed(() => {
     this.width();
     return this.samples()
       .map((s, i) => ({ s, i }))
@@ -117,38 +144,38 @@ export class PingChart {
       .map(({ i }) => this.x(i));
   });
 
-  readonly lastPoint = computed(() => {
-    const samples = this.samples();
-    const i = samples.length - 1;
-    const s = samples[i];
+  readonly lastPoint: Signal<Point | null> = computed((): Point | null => {
+    const samples: PingSample[] = this.samples();
+    const i: number = samples.length - 1;
+    const s: PingSample = samples[i];
     if (!s || s.error) return null;
     this.width();
     return { x: this.x(i), y: this.y(s.latencyMs) };
   });
 
-  readonly hovered = computed(() => {
-    const i = this.hover();
-    const s = i === null ? undefined : this.samples()[i];
+  readonly hovered: Signal<HoveredSample | null> = computed((): HoveredSample | null => {
+    const i: number | null = this.hover();
+    const s: PingSample | undefined = i === null ? undefined : this.samples()[i];
     if (!s) return null;
-    const x = this.x(i!);
-    const y = s.error ? this.baseline : this.y(s.latencyMs);
+    const x: number = this.x(i!);
+    const y: number = s.error ? this.baseline : this.y(s.latencyMs);
     // Keep the tooltip inside the chart: flip to the left half past the middle.
-    const flip = x > this.width() / 2;
+    const flip: boolean = x > this.width() / 2;
     return { s, x, y, flip };
   });
 
-  readonly summary = computed(() => {
-    const st = this.stats();
+  readonly summary: Signal<string> = computed(() => {
+    const st: PingStats = this.stats();
     if (!this.samples().length) return 'No ping data yet';
-    const fmt = (v: number | null) => (v === null ? 'n/a' : `${v.toFixed(1)} ms`);
+    const fmt: (v: number | null) => string = (v: number | null) => (v === null ? 'n/a' : `${v.toFixed(1)} ms`);
     return `Latency over the last ${this.samples().length} pings: min ${fmt(st.min)}, average ${fmt(st.avg)}, max ${fmt(st.max)}, loss ${st.loss?.toFixed(0)}%.`;
   });
 
   constructor() {
-    const destroyRef = inject(DestroyRef);
+    const destroyRef: DestroyRef = inject(DestroyRef);
     // Measure the real width so text and strokes are drawn at 1:1, not stretched.
     afterNextRender(() => {
-      const observer = new ResizeObserver(([entry]) => this.width.set(Math.max(240, Math.floor(entry.contentRect.width))));
+      const observer: ResizeObserver = new ResizeObserver(([entry]) => this.width.set(Math.max(240, Math.floor(entry.contentRect.width))));
       observer.observe(this.host.nativeElement.querySelector('.plot')!);
       destroyRef.onDestroy(() => observer.disconnect());
     });
@@ -156,13 +183,13 @@ export class PingChart {
 
   /** Crosshair snaps to the nearest ping slot. */
   onPointerMove(event: PointerEvent): void {
-    const samples = this.samples();
+    const samples: PingSample[] = this.samples();
     if (!samples.length) return;
-    const rect = (event.currentTarget as SVGElement).getBoundingClientRect();
-    const px = event.clientX - rect.left;
-    const offset = PING_HISTORY - samples.length;
-    const slot = Math.round(((px - PAD.left) / this.plotWidth()) * (PING_HISTORY - 1));
-    const index = Math.min(samples.length - 1, Math.max(0, slot - offset));
+    const rect: DOMRect = (event.currentTarget as SVGElement).getBoundingClientRect();
+    const px: number = event.clientX - rect.left;
+    const offset: number = PING_HISTORY - samples.length;
+    const slot: number = Math.round(((px - PAD.left) / this.plotWidth()) * (PING_HISTORY - 1));
+    const index: number = Math.min(samples.length - 1, Math.max(0, slot - offset));
     this.hover.set(index);
   }
 

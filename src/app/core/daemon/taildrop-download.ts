@@ -3,8 +3,8 @@ import { DaemonClient } from './grpc-web';
 import { DownloadTaildropFileChunk } from './models';
 
 /** Received data is written in blocks of this size rather than per 16 KB chunk. */
-const WRITE_BLOCK = 4 * 1024 * 1024;
-const RETRY_DELAYS = [200, 500, 1000, 2000, 4000];
+const WRITE_BLOCK: number = 4 * 1024 * 1024;
+const RETRY_DELAYS: number[] = [200, 500, 1000, 2000, 4000];
 
 /**
  * Streams a received Taildrop file to `target`.
@@ -23,21 +23,21 @@ export async function downloadTaildropFile(
   target: string,
   onProgress?: (written: number, total: number) => void,
 ): Promise<void> {
-  const temp = `${tempDir}/${Date.now()}-${Math.random().toString(36).slice(2)}.part`;
+  const temp: string = `${tempDir}/${Date.now()}-${Math.random().toString(36).slice(2)}.part`;
   let buffered: Uint8Array[] = [];
-  let bufferedBytes = 0;
-  let received = 0;
-  let written = 0;
-  let created = false;
-  let pending = Promise.resolve();
+  let bufferedBytes: number = 0;
+  let received: number = 0;
+  let written: number = 0;
+  let created: boolean = false;
+  let pending: Promise<void> = Promise.resolve();
 
   // Writes are chained so blocks land in order even though the stream does not wait for them.
-  const flush = () => {
+  const flush: () => void = () => {
     if (!bufferedBytes && created) return;
-    const block = concatChunks(buffered, bufferedBytes);
+    const block: ArrayBuffer = concatChunks(buffered, bufferedBytes);
     buffered = [];
     bufferedBytes = 0;
-    const append = created;
+    const append: boolean = created;
     created = true;
     pending = pending.then(async () => {
       await retry(() => (append ? filesystem.appendBinaryFile(temp, block) : filesystem.writeBinaryFile(temp, block)));
@@ -68,8 +68,8 @@ export async function downloadTaildropFile(
 }
 
 function concatChunks(chunks: Uint8Array[], total: number): ArrayBuffer {
-  const out = new Uint8Array(total);
-  let offset = 0;
+  const out: Uint8Array<ArrayBuffer> = new Uint8Array(total);
+  let offset: number = 0;
   for (const chunk of chunks) {
     out.set(chunk, offset);
     offset += chunk.length;
@@ -89,7 +89,7 @@ async function moveIntoPlace(source: string, target: string): Promise<void> {
 
 /** Retries a filesystem call that can fail while another program briefly holds the file. */
 async function retry<T>(operation: () => Promise<T>): Promise<T> {
-  for (let attempt = 0; ; attempt++) {
+  for (let attempt: number = 0; ; attempt++) {
     try {
       return await operation();
     } catch (e) {

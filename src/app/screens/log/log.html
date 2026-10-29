@@ -53,7 +53,7 @@
     </cdk-virtual-scroll-viewport>
   } @else {
     <div class="viewport empty muted">
-      {{ box.status() === 'stopped' ? 'Service is not running.' : 'No logs yet.' }}
+      {{ singBoxService.status() === 'stopped' ? 'Service is not running.' : 'No logs yet.' }}
     </div>
   }
 

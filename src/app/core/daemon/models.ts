@@ -89,9 +89,16 @@ export interface DownloadTaildropFileChunk {
   data: Uint8Array;
 }
 
+/** Progress of one file of SendTaildropFiles. */
+export interface TaildropSendProgress {
+  fileIndex: number;
+  sentBytes: number;
+  fileCompleted: boolean;
+}
+
 /** Server messages of SendTaildropFiles (a oneof: either field is set). */
 export interface TaildropSendServerMessage {
-  progress?: { fileIndex: number; sentBytes: number; fileCompleted: boolean };
+  progress?: TaildropSendProgress;
   /** Bytes sing-box has read from the stream so far (acknowledged about every 1 MiB). */
   receivedBytes?: number;
 }

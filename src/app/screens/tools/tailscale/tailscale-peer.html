@@ -45,7 +45,7 @@
         <div class="section-row">
           <h2 class="section-title">Taildrop</h2>
           @if (hasFinished()) {
-            <button mat-button (click)="sender.clearFinished(peerId())" matTooltip="Remove finished transfers from the list">
+            <button mat-button (click)="taildropSendService.clearFinished(peerId())" matTooltip="Remove finished transfers from the list">
               <mat-icon>clear_all</mat-icon> Clear
             </button>
           }
@@ -105,7 +105,7 @@
                   }
                 </span>
                 @if (transfer.state === 'sending') {
-                  <button mat-icon-button (click)="sender.cancel(transfer.id)" matTooltip="Cancel">
+                  <button mat-icon-button (click)="taildropSendService.cancel(transfer.id)" matTooltip="Cancel">
                     <mat-icon>close</mat-icon>
                   </button>
                 }

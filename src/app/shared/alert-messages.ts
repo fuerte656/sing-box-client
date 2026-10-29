@@ -1,4 +1,4 @@
-import { ServiceAlert } from '../core/box.service';
+import { ServiceAlert } from '../core/sing-box.service';
 
 export interface AlertText {
   title: string;

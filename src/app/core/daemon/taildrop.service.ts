@@ -1,4 +1,4 @@
-import { Injectable, Injector, computed, effect, inject, signal, untracked } from '@angular/core';
+import { Injector, Service, Signal, WritableSignal, computed, effect, inject, signal, untracked } from '@angular/core';
 import { Router } from '@angular/router';
 import { os } from '@neutralinojs/lib';
 import { Dialogs } from '../../shared/dialogs';
@@ -7,7 +7,7 @@ import { CorePlatform } from '../platform/core-platform';
 import { SettingsService } from '../settings.service';
 import { WindowService } from '../window.service';
 import { DaemonService } from './daemon.service';
-import { TaildropFile, TaildropReceivingFile } from './models';
+import { TaildropFile, TaildropReceivingFile, TailscaleEndpointStatus } from './models';
 
 export interface SavedTaildropFile {
   endpointTag: string;
@@ -17,7 +17,7 @@ export interface SavedTaildropFile {
   savedAt: number;
 }
 
-const RECENT_LIMIT = 50;
+const RECENT_LIMIT: number = 50;
 
 export interface ReceivingProgress {
   endpointTag: string;
@@ -34,30 +34,30 @@ export interface ReceivingProgress {
  *   inbox, like the official Tailscale clients do;
  * - otherwise new files are announced and wait in the inbox for a manual save.
  */
-@Injectable({ providedIn: 'root' })
+@Service()
 export class TaildropService {
-  private readonly daemon = inject(DaemonService);
-  private readonly native = inject(NativeService);
-  private readonly platform = inject(CorePlatform);
-  private readonly settings = inject(SettingsService);
-  private readonly window = inject(WindowService);
-  private readonly dialogs = inject(Dialogs);
-  private readonly router = inject(Router);
-  private readonly injector = inject(Injector);
+  private readonly daemonService: DaemonService = inject(DaemonService);
+  private readonly nativeService: NativeService = inject(NativeService);
+  private readonly platform: CorePlatform = inject(CorePlatform);
+  private readonly settingsService: SettingsService = inject(SettingsService);
+  private readonly windowService: WindowService = inject(WindowService);
+  private readonly dialogs: Dialogs = inject(Dialogs);
+  private readonly router: Router = inject(Router);
+  private readonly injector: Injector = inject(Injector);
 
   /** Files saved this session (auto or manual), newest first. */
-  readonly recent = signal<SavedTaildropFile[]>([]);
+  readonly recent: WritableSignal<SavedTaildropFile[]> = signal<SavedTaildropFile[]>([]);
 
   /** Files currently arriving, per endpoint (live while Tailscale reports receivingFileCount > 0). */
-  private readonly receivingByEndpoint = signal<Record<string, TaildropReceivingFile[]>>({});
-  private readonly receivingWatchers = new Map<string, AbortController>();
+  private readonly receivingByEndpoint: WritableSignal<Record<string, TaildropReceivingFile[]>> = signal<Record<string, TaildropReceivingFile[]>>({});
+  private readonly receivingWatchers: Map<string, AbortController> = new Map<string, AbortController>();
   /** Overall progress of everything arriving right now, or null when nothing is. */
-  readonly receiving = computed<ReceivingProgress | null>(() => {
-    const entries = Object.entries(this.receivingByEndpoint()).filter(([, files]) => files.length);
+  readonly receiving: Signal<ReceivingProgress | null> = computed<ReceivingProgress | null>(() => {
+    const entries: [string, TaildropReceivingFile[]][] = Object.entries(this.receivingByEndpoint()).filter(([, files]) => files.length);
     if (!entries.length) return null;
-    const files = entries.flatMap(([, f]) => f);
-    const receivedBytes = files.reduce((sum, f) => sum + f.receivedBytes, 0);
-    const totalBytes = files.reduce((sum, f) => sum + f.size, 0);
+    const files: TaildropReceivingFile[] = entries.flatMap(([, f]) => f);
+    const receivedBytes: number = files.reduce((sum, f) => sum + f.receivedBytes, 0);
+    const totalBytes: number = files.reduce((sum, f) => sum + f.size, 0);
     return {
       endpointTag: entries[0][0],
       files,
@@ -68,24 +68,24 @@ export class TaildropService {
   });
 
   /** Names already announced per endpoint (manual mode); the first look is only a baseline. */
-  private readonly known = new Map<string, Set<string>>();
+  private readonly known: Map<string, Set<string>> = new Map<string, Set<string>>();
   /** Last waiting/unread counts per endpoint, to react only when they change. */
-  private readonly counts = new Map<string, string>();
+  private readonly counts: Map<string, string> = new Map<string, string>();
   /** One check at a time per endpoint; a change during a check schedules one more. */
-  private readonly running = new Map<string, boolean>();
-  private readonly rerun = new Set<string>();
+  private readonly running: Map<string, boolean> = new Map<string, boolean>();
+  private readonly rerun: Set<string> = new Set<string>();
   /** endpointTag/name of files whose auto-save failed: left for a manual save instead of retried in a loop. */
-  private readonly failed = new Set<string>();
-  private started = false;
+  private readonly failed: Set<string> = new Set<string>();
+  private started: boolean = false;
 
   start(): void {
     if (this.started) return;
     this.started = true;
     effect(
       () => {
-        const endpoints = this.daemon.tailscale();
+        const endpoints: TailscaleEndpointStatus[] = this.daemonService.tailscale();
         untracked(() => {
-          const present = new Set(endpoints.map((e) => e.endpointTag));
+          const present: Set<string> = new Set(endpoints.map((e) => e.endpointTag));
           for (const tag of [...this.counts.keys()]) {
             if (!present.has(tag)) {
               this.known.delete(tag);
@@ -93,7 +93,7 @@ export class TaildropService {
             }
           }
           for (const [tag, watcher] of [...this.receivingWatchers]) {
-            const endpoint = endpoints.find((e) => e.endpointTag === tag);
+            const endpoint: TailscaleEndpointStatus | undefined = endpoints.find((e) => e.endpointTag === tag);
             if (!endpoint || !endpoint.receivingFileCount) this.stopWatchingReceiving(tag, watcher);
           }
           for (const e of endpoints) {
@@ -101,7 +101,7 @@ export class TaildropService {
             if (e.receivingFileCount && !this.receivingWatchers.has(e.endpointTag)) {
               this.watchReceiving(e.endpointTag);
             }
-            const key = `${e.waitingFileCount}/${e.unreadFileCount}`;
+            const key: string = `${e.waitingFileCount}/${e.unreadFileCount}`;
             if (this.counts.get(e.endpointTag) === key) continue;
             this.counts.set(e.endpointTag, key);
             void this.check(e.endpointTag);
@@ -127,13 +127,13 @@ export class TaildropService {
 
   /** Folder received files go to: the configured one, else the OS Downloads folder. */
   async folder(): Promise<string> {
-    const configured = this.settings.get('taildropFolder');
+    const configured: string = this.settingsService.get('taildropFolder');
     return (configured || (await os.getPath('downloads'))).replace(/\\/g, '/').replace(/\/$/, '');
   }
 
   /** Saves one inbox file to `target` and records it (a manual save also clears a failed auto-save). */
   async save(endpointTag: string, file: TaildropFile, target: string, onProgress?: (written: number, total: number) => void) {
-    await this.daemon.downloadTaildropFile(endpointTag, file.name, file.size, target, onProgress);
+    await this.daemonService.downloadTaildropFile(endpointTag, file.name, file.size, target, onProgress);
     this.failed.delete(`${endpointTag}/${file.name}`);
     const saved: SavedTaildropFile = { endpointTag, name: file.name, path: target, senderName: file.senderName, savedAt: Date.now() };
     this.recent.update((list) => [saved, ...list.filter((f) => f.path !== target)].slice(0, RECENT_LIMIT));
@@ -146,9 +146,9 @@ export class TaildropService {
 
   /** Live inbox subscription while files arrive; its `receiving` entries carry byte progress. */
   private watchReceiving(endpointTag: string): void {
-    const abort = new AbortController();
+    const abort: AbortController = new AbortController();
     this.receivingWatchers.set(endpointTag, abort);
-    void this.daemon
+    void this.daemonService
       .subscribeTaildropInbox(
         endpointTag,
         (inbox) => this.receivingByEndpoint.update((all) => ({ ...all, [endpointTag]: inbox.receiving })),
@@ -164,7 +164,7 @@ export class TaildropService {
     watcher.abort();
     this.receivingWatchers.delete(endpointTag);
     this.receivingByEndpoint.update((all) => {
-      const { [endpointTag]: _, ...rest } = all;
+      const { [endpointTag]: _, ...rest }: Record<string, TaildropReceivingFile[]> = all;
       return rest;
     });
   }
@@ -188,33 +188,33 @@ export class TaildropService {
   private async process(endpointTag: string): Promise<void> {
     let files: TaildropFile[];
     try {
-      files = (await this.daemon.fetchTaildropInbox(endpointTag)).files;
+      files = (await this.daemonService.fetchTaildropInbox(endpointTag)).files;
     } catch {
       return;
     }
-    if (this.settings.get('taildropAutoSave')) {
+    if (this.settingsService.get('taildropAutoSave')) {
       await this.autoSave(endpointTag, files);
       return;
     }
-    const known = this.known.get(endpointTag);
+    const known: Set<string> | undefined = this.known.get(endpointTag);
     this.known.set(endpointTag, new Set(files.map((f) => f.name)));
-    const added = known ? files.filter((f) => !known.has(f.name)) : [];
+    const added: TaildropFile[] = known ? files.filter((f) => !known.has(f.name)) : [];
     if (added.length) await this.announce(endpointTag, added);
   }
 
   /** Saves every waiting file into the Taildrop folder, then removes it from the inbox. */
   private async autoSave(endpointTag: string, files: TaildropFile[]): Promise<void> {
     if (!files.length) return;
-    const folder = await this.folder();
-    await this.native.ensureDir(folder).catch(() => undefined);
+    const folder: string = await this.folder();
+    await this.nativeService.ensureDir(folder).catch(() => undefined);
     const saved: SavedTaildropFile[] = [];
     for (const file of files) {
-      const key = `${endpointTag}/${file.name}`;
+      const key: string = `${endpointTag}/${file.name}`;
       if (this.failed.has(key)) continue;
       try {
-        const target = await this.uniquePath(folder, file.name);
+        const target: string = await this.uniquePath(folder, file.name);
         saved.push(await this.save(endpointTag, file, target));
-        await this.daemon.deleteTaildropFile(endpointTag, file.name);
+        await this.daemonService.deleteTaildropFile(endpointTag, file.name);
       } catch (e) {
         this.failed.add(key);
         void this.dialogs.error(`Could not save ${file.name}`, e);
@@ -225,20 +225,20 @@ export class TaildropService {
 
   /** "name.ext", then "name (1).ext", "name (2).ext", … — never overwrite an existing file. */
   private async uniquePath(folder: string, name: string): Promise<string> {
-    const safe = name.replace(/[\\/:*?"<>|]/g, '_');
-    const dot = safe.lastIndexOf('.');
-    const [base, ext] = dot > 0 ? [safe.slice(0, dot), safe.slice(dot)] : [safe, ''];
-    for (let n = 0; ; n++) {
-      const candidate = `${folder}/${n ? `${base} (${n})${ext}` : safe}`;
-      if (!(await this.native.exists(candidate))) return candidate;
+    const safe: string = name.replace(/[\\/:*?"<>|]/g, '_');
+    const dot: number = safe.lastIndexOf('.');
+    const [base, ext]: [string, string] = dot > 0 ? [safe.slice(0, dot), safe.slice(dot)] : [safe, ''];
+    for (let n: number = 0; ; n++) {
+      const candidate: string = `${folder}/${n ? `${base} (${n})${ext}` : safe}`;
+      if (!(await this.nativeService.exists(candidate))) return candidate;
     }
   }
 
   private async announceSaved(saved: SavedTaildropFile[], folder: string): Promise<void> {
-    if (!this.settings.get('taildropNotifications')) return;
-    const folderName = folder.split('/').pop() || folder;
-    const from = saved[0].senderName ? ` from ${saved[0].senderName}` : '';
-    const what = saved.length === 1 ? saved[0].name : `${saved.length} files`;
+    if (!this.settingsService.get('taildropNotifications')) return;
+    const folderName: string = folder.split('/').pop() || folder;
+    const from: string = saved[0].senderName ? ` from ${saved[0].senderName}` : '';
+    const what: string = saved.length === 1 ? saved[0].name : `${saved.length} files`;
     await this.platform.showNotification('Taildrop: file received', `${what}${from}, saved to ${folderName}`).catch(() => undefined);
     if (await this.dialogs.toastAction(`Received ${what}${from} · saved to ${folderName}`, 'Show in folder', 8000, { notify: false })) {
       await this.reveal(saved[0].path).catch((e) => this.dialogs.error('Could not open the folder', e));
@@ -247,14 +247,14 @@ export class TaildropService {
 
   /** Manual-save mode: announce new inbox files and offer to open the inbox. */
   private async announce(endpointTag: string, files: TaildropFile[]): Promise<void> {
-    if (!this.settings.get('taildropNotifications')) return;
-    const from = files[0].senderName ? ` from ${files[0].senderName}` : '';
-    const what = files.length === 1 ? files[0].name : `${files.length} files`;
+    if (!this.settingsService.get('taildropNotifications')) return;
+    const from: string = files[0].senderName ? ` from ${files[0].senderName}` : '';
+    const what: string = files.length === 1 ? files[0].name : `${files.length} files`;
     await this.platform.showNotification('Taildrop: file received', `${what}${from}`).catch(() => undefined);
-    const inboxUrl = `/tools/tailscale/${encodeURIComponent(endpointTag)}/taildrop`;
+    const inboxUrl: string = `/tools/tailscale/${encodeURIComponent(endpointTag)}/taildrop`;
     if (this.router.url.startsWith(inboxUrl)) return; // the open inbox already shows it
     if (await this.dialogs.toastAction(`Received ${what}${from}`, 'Open', 8000, { notify: false })) {
-      if (!this.window.visible()) await this.window.show();
+      if (!this.windowService.visible()) await this.windowService.show();
       await this.router.navigateByUrl(inboxUrl);
     }
   }

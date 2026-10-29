@@ -6,11 +6,15 @@
   overflow-y: auto;
 }
 
+// Centered column, like the Tools page.
 .sections {
   display: flex;
   flex-direction: column;
   gap: 16px;
+  width: 100%;
   max-width: 880px;
+  margin: 0 auto;
+  padding-bottom: 24px;
 }
 
 mat-card-header mat-icon[mat-card-avatar] {

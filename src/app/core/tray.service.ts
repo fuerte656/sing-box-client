@@ -1,11 +1,11 @@
-import { Injectable, Injector, effect, inject } from '@angular/core';
+import { Injector, Service, effect, inject } from '@angular/core';
 import { TrayMenuItem, events, os } from '@neutralinojs/lib';
-import { BoxService } from './box.service';
+import { ServiceStatus, SingBoxService } from './sing-box.service';
 import { ClashApiService } from './clash-api.service';
-import { ProfileService } from './profile.service';
+import { Profile, ProfileService } from './profile.service';
 import { WindowService } from './window.service';
 
-const ICONS = {
+const ICONS: Record<'running' | 'stopped' | 'busy', string> = {
   running: '/www/tray/running.png',
   stopped: '/www/tray/stopped.png',
   busy: '/www/tray/busy.png',
@@ -17,15 +17,15 @@ const SEPARATOR: TrayMenuItem = { text: '-' };
  * System tray icon and menu. The icon reflects the service status; the menu offers
  * show/hide, start/stop/restart, profile switching, Clash mode, system proxy and quit.
  */
-@Injectable({ providedIn: 'root' })
+@Service()
 export class TrayService {
-  private readonly box = inject(BoxService);
-  private readonly clash = inject(ClashApiService);
-  private readonly profiles = inject(ProfileService);
-  private readonly window = inject(WindowService);
-  private readonly injector = inject(Injector);
+  private readonly singBoxService: SingBoxService = inject(SingBoxService);
+  private readonly clashApiService: ClashApiService = inject(ClashApiService);
+  private readonly profileService: ProfileService = inject(ProfileService);
+  private readonly windowService: WindowService = inject(WindowService);
+  private readonly injector: Injector = inject(Injector);
   private onQuit: () => Promise<void> = async () => undefined;
-  private started = false;
+  private started: boolean = false;
 
   async start(onQuit: () => Promise<void>): Promise<void> {
     if (this.started) return;
@@ -39,7 +39,7 @@ export class TrayService {
   }
 
   private icon(): string {
-    switch (this.box.status()) {
+    switch (this.singBoxService.status()) {
       case 'started':
         return ICONS.running;
       case 'stopped':
@@ -50,10 +50,10 @@ export class TrayService {
   }
 
   private buildMenu(): TrayMenuItem[] {
-    const status = this.box.status();
-    const running = status === 'started';
-    const selected = this.profiles.selected();
-    const statusText = {
+    const status: ServiceStatus = this.singBoxService.status();
+    const running: boolean = status === 'started';
+    const selected: Profile | null = this.profileService.selected();
+    const statusText: string = {
       started: 'Running',
       starting: 'Starting…',
       stopping: 'Stopping…',
@@ -61,7 +61,7 @@ export class TrayService {
     }[status];
 
     const items: TrayMenuItem[] = [
-      { id: 'window', text: this.window.visible() ? 'Hide window' : 'Show window' },
+      { id: 'window', text: this.windowService.visible() ? 'Hide window' : 'Show window' },
       SEPARATOR,
       { id: 'status', text: selected ? `${statusText} · ${selected.name}` : statusText, isDisabled: true },
       running
@@ -70,7 +70,7 @@ export class TrayService {
     ];
     if (running) items.push({ id: 'restart', text: 'Restart' });
 
-    const profiles = this.profiles.profiles();
+    const profiles: Profile[] = this.profileService.profiles();
     if (profiles.length > 1) {
       items.push(SEPARATOR, { id: 'profiles', text: 'Profiles', isDisabled: true });
       for (const profile of profiles) {
@@ -83,18 +83,18 @@ export class TrayService {
       }
     }
 
-    if (running && this.clash.modeList().length > 1) {
+    if (running && this.clashApiService.modeList().length > 1) {
       items.push(SEPARATOR, { id: 'modes', text: 'Mode', isDisabled: true });
-      for (const mode of this.clash.modeList()) {
-        items.push({ id: `mode:${mode}`, text: mode, isChecked: mode === this.clash.mode() });
+      for (const mode of this.clashApiService.modeList()) {
+        items.push({ id: `mode:${mode}`, text: mode, isChecked: mode === this.clashApiService.mode() });
       }
     }
 
-    if (running && this.box.systemProxy().available) {
+    if (running && this.singBoxService.systemProxy().available) {
       items.push(SEPARATOR, {
         id: 'systemProxy',
         text: 'System HTTP proxy',
-        isChecked: this.box.systemProxy().enabled,
+        isChecked: this.singBoxService.systemProxy().enabled,
       });
     }
 
@@ -112,24 +112,24 @@ export class TrayService {
       return;
     }
     if (id.startsWith('mode:')) {
-      await this.clash.setMode(id.slice('mode:'.length)).catch((e) => console.warn('mode switch failed', e));
+      await this.clashApiService.setMode(id.slice('mode:'.length)).catch((e) => console.warn('mode switch failed', e));
       return;
     }
     switch (id) {
       case 'window':
-        await this.window.toggle();
+        await this.windowService.toggle();
         break;
       case 'start':
-        await this.box.start();
+        await this.singBoxService.start();
         break;
       case 'stop':
-        await this.box.stop();
+        await this.singBoxService.stop();
         break;
       case 'restart':
-        await this.box.restart();
+        await this.singBoxService.restart();
         break;
       case 'systemProxy':
-        await this.box.setSystemProxyEnabled(!this.box.systemProxy().enabled);
+        await this.singBoxService.setSystemProxyEnabled(!this.singBoxService.systemProxy().enabled);
         break;
       case 'quit':
         await this.onQuit();
@@ -138,9 +138,9 @@ export class TrayService {
   }
 
   private async switchProfile(id: number): Promise<void> {
-    if (id === this.profiles.selectedId()) return;
-    await this.profiles.select(id);
+    if (id === this.profileService.selectedId()) return;
+    await this.profileService.select(id);
     // Same as the dashboard: a running service switches to the new profile right away.
-    if (this.box.status() === 'started') await this.box.restart();
+    if (this.singBoxService.status() === 'started') await this.singBoxService.restart();
   }
 }

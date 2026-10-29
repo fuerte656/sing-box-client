@@ -1,8 +1,8 @@
-import { Signal, computed, signal } from '@angular/core';
+import { Signal, WritableSignal, computed, signal } from '@angular/core';
 import { NativeService } from '../native.service';
 
-const STORAGE_PREFIX = 'sing-box-client:settings:';
-const REPLICATION_DELAY = 300;
+const STORAGE_PREFIX: string = 'sing-box-client:settings:';
+const REPLICATION_DELAY: number = 300;
 
 /**
  * A group of settings persisted in a JSON file in the data folder.
@@ -21,16 +21,16 @@ export abstract class BaseSettings<T extends object> {
   /** Values used for keys missing from the file. */
   protected abstract readonly defaults: T;
 
-  private readonly state = signal<T | null>(null);
+  private readonly state: WritableSignal<T | null> = signal<T | null>(null);
   private loading?: Promise<void>;
   private replicationTimer?: ReturnType<typeof setTimeout>;
   private replication: Promise<void> = Promise.resolve();
-  private dirty = false;
+  private dirty: boolean = false;
 
   /** Current values; defaults until {@link load} completes. */
   readonly values: Signal<T> = computed(() => this.state() ?? this.defaults);
 
-  constructor(protected readonly native: NativeService) {}
+  constructor(protected readonly nativeService: NativeService) {}
 
   private get storageKey(): string {
     return STORAGE_PREFIX + this.fileName;
@@ -39,10 +39,10 @@ export abstract class BaseSettings<T extends object> {
   /** Loads the JSON file into webview storage and memory. Safe to call repeatedly. */
   load(): Promise<void> {
     this.loading ??= (async () => {
-      const fromFile = this.native.available ? await this.native.readJson<Partial<T>>(await this.filePath()) : null;
+      const fromFile: Partial<T> | null = this.nativeService.available ? await this.nativeService.readJson<Partial<T>>(await this.filePath()) : null;
       // Fall back to webview storage only when the file is missing or unreadable.
-      const stored = fromFile ?? this.readStorage();
-      const values = this.normalize({ ...this.defaults, ...stored });
+      const stored: Partial<T> | null = fromFile ?? this.readStorage();
+      const values: T = this.normalize({ ...this.defaults, ...stored });
       this.writeStorage(values);
       this.state.set(values);
       // Keep the file complete (new keys, normalized values) so it always mirrors storage.
@@ -64,7 +64,7 @@ export abstract class BaseSettings<T extends object> {
 
   /** Applies a patch: memory and webview storage immediately, the JSON file shortly after. */
   update(patch: Partial<T>): Promise<void> {
-    const values = this.normalize({ ...this.values(), ...patch });
+    const values: T = this.normalize({ ...this.values(), ...patch });
     this.state.set(values);
     this.writeStorage(values);
     return this.scheduleReplication();
@@ -100,22 +100,22 @@ export abstract class BaseSettings<T extends object> {
 
   /** Serialises file writes so an older snapshot can never overwrite a newer one. */
   private replicate(): Promise<void> {
-    const run = async () => {
-      if (!this.dirty || !this.native.available) return;
+    const run: () => Promise<void> = async () => {
+      if (!this.dirty || !this.nativeService.available) return;
       this.dirty = false;
-      await this.native.writeJson(await this.filePath(), this.values());
+      await this.nativeService.writeJson(await this.filePath(), this.values());
     };
     this.replication = this.replication.then(run, run);
     return this.replication;
   }
 
   private filePath(): Promise<string> {
-    return this.native.path(this.fileName);
+    return this.nativeService.path(this.fileName);
   }
 
   private readStorage(): Partial<T> | null {
     try {
-      const raw = localStorage.getItem(this.storageKey);
+      const raw: string | null = localStorage.getItem(this.storageKey);
       return raw ? (JSON.parse(raw) as Partial<T>) : null;
     } catch {
       return null;

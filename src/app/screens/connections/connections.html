@@ -26,7 +26,7 @@
     <button
       mat-icon-button
       (click)="closeAll()"
-      [disabled]="!clash.activeCount()"
+      [disabled]="!clashApiService.activeCount()"
       matTooltip="Close all connections"
     >
       <mat-icon>delete_sweep</mat-icon>
@@ -47,7 +47,7 @@
       <span>
         @if (query()) {
           No connections match your search.
-        } @else if (box.status() !== 'started' && state() === 'active') {
+        } @else if (singBoxService.status() !== 'started' && state() === 'active') {
           Start the service to see connections.
         } @else {
           No {{ state() === 'all' ? '' : state() }} connections.

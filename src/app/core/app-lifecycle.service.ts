@@ -1,6 +1,6 @@
-import { Injectable, inject } from '@angular/core';
+import { Service, inject } from '@angular/core';
 import { app, events } from '@neutralinojs/lib';
-import { BoxService } from './box.service';
+import { SingBoxService } from './sing-box.service';
 import { CoreBinaryService } from './core-binary.service';
 import { TaildropService } from './daemon/taildrop.service';
 import { InstanceService } from './instance.service';
@@ -12,48 +12,48 @@ import { TrayService } from './tray.service';
 import { WindowService } from './window.service';
 
 /** A clean quit can take ~12 s when sing-box has to be killed after its graceful stop; past this it is force-quit. */
-const QUIT_TIMEOUT = 20_000;
+const QUIT_TIMEOUT: number = 20_000;
 
 /** App start-up, window-close handling and quitting. */
-@Injectable({ providedIn: 'root' })
+@Service()
 export class AppLifecycleService {
-  private readonly native = inject(NativeService);
-  private readonly settings = inject(SettingsService);
-  private readonly profiles = inject(ProfileService);
-  private readonly core = inject(CoreBinaryService);
-  private readonly box = inject(BoxService);
-  private readonly tray = inject(TrayService);
-  private readonly window = inject(WindowService);
-  private readonly instance = inject(InstanceService);
-  private readonly taildrop = inject(TaildropService);
-  private readonly platform = inject(CorePlatform);
-  private quitting = false;
+  private readonly nativeService: NativeService = inject(NativeService);
+  private readonly settingsService: SettingsService = inject(SettingsService);
+  private readonly profileService: ProfileService = inject(ProfileService);
+  private readonly coreBinaryService: CoreBinaryService = inject(CoreBinaryService);
+  private readonly singBoxService: SingBoxService = inject(SingBoxService);
+  private readonly trayService: TrayService = inject(TrayService);
+  private readonly windowService: WindowService = inject(WindowService);
+  private readonly instanceService: InstanceService = inject(InstanceService);
+  private readonly taildropService: TaildropService = inject(TaildropService);
+  private readonly platform: CorePlatform = inject(CorePlatform);
+  private quitting: boolean = false;
 
   async initialize(): Promise<void> {
-    if (!this.native.available) return;
+    if (!this.nativeService.available) return;
     // The window starts hidden (neutralino.config.json) so "start minimized" does not flash it.
     try {
       // Only one copy runs: a running instance is asked to quit (it stops sing-box first).
-      await this.instance.claim(() => this.quit('another copy took over'));
-      void this.instance.logEvent('started');
+      await this.instanceService.claim(() => this.quit('another copy took over'));
+      void this.instanceService.logEvent('started');
       // Stops sing-box if this copy dies, and kills this copy if its UI is lost (Quit cannot work then).
       void this.platform
-        .watchApp(NL_PID, NL_PORT, await this.instance.lockPath())
+        .watchApp(NL_PID, NL_PORT, await this.instanceService.lockPath())
         .catch((e) => console.warn('watchdog unavailable', e));
-      await this.settings.load();
-      await this.profiles.load();
-      await this.core.refresh();
+      await this.settingsService.load();
+      await this.profileService.load();
+      await this.coreBinaryService.refresh();
 
       await events.on('windowClose', () => void this.onWindowClose());
-      await this.tray.start(() => this.quit('tray Quit'));
-      this.taildrop.start();
+      await this.trayService.start(() => this.quit('tray Quit'));
+      this.taildropService.start();
 
-      if (this.settings.get('autoStart') && this.core.version() && this.profiles.selected()) {
-        void this.box.start();
+      if (this.settingsService.get('autoStart') && this.coreBinaryService.version() && this.profileService.selected()) {
+        void this.singBoxService.start();
       }
     } finally {
-      if (!(this.settings.get('startMinimized') && this.settings.get('closeToTray'))) {
-        await this.window.restore();
+      if (!(this.settingsService.get('startMinimized') && this.settingsService.get('closeToTray'))) {
+        await this.windowService.restore();
       }
     }
   }
@@ -65,12 +65,12 @@ export class AppLifecycleService {
   async quit(reason: string): Promise<void> {
     if (this.quitting) return this.forceQuit(`${reason} while quitting`);
     this.quitting = true;
-    await this.instance.logEvent(`quit: ${reason}`);
+    await this.instanceService.logEvent(`quit: ${reason}`);
     setTimeout(() => void this.forceQuit('quit timed out'), QUIT_TIMEOUT);
-    await this.window.saveBounds().catch(() => undefined);
-    await this.box.stop();
-    await this.settings.flush();
-    await this.instance.release().catch(() => undefined);
+    await this.windowService.saveBounds().catch(() => undefined);
+    await this.singBoxService.stop();
+    await this.settingsService.flush();
+    await this.instanceService.release().catch(() => undefined);
     await app.exit();
   }
 
@@ -79,14 +79,14 @@ export class AppLifecycleService {
    * cleans up the stale instance lock.
    */
   private async forceQuit(reason: string): Promise<void> {
-    await this.instance.logEvent(`force quit: ${reason}`);
-    await this.box.kill();
+    await this.instanceService.logEvent(`force quit: ${reason}`);
+    await this.singBoxService.kill();
     await this.platform.forceKill(NL_PID);
   }
 
   private async onWindowClose(): Promise<void> {
-    if (this.settings.get('closeToTray')) {
-      await this.window.hide();
+    if (this.settingsService.get('closeToTray')) {
+      await this.windowService.hide();
     } else {
       await this.quit('window closed');
     }

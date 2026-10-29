@@ -16,7 +16,7 @@
           <div class="row-text">
             <span class="row-title">Version</span>
             <span class="row-sub muted">
-              {{ core.version() ?? 'Not installed' }}
+              {{ coreBinaryService.version() ?? 'Not installed' }}
               @if (latest(); as l) {
                 · latest {{ l.version }}
               }
@@ -26,9 +26,9 @@
         <div class="row">
           <div class="row-text">
             <span class="row-title">Path</span>
-            <span class="row-sub mono path">{{ core.binaryPath() || '—' }}</span>
+            <span class="row-sub mono path">{{ coreBinaryService.binaryPath() || '—' }}</span>
           </div>
-          <button mat-icon-button (click)="copyCorePath()" [disabled]="!core.binaryPath()" matTooltip="Copy path">
+          <button mat-icon-button (click)="copyCorePath()" [disabled]="!coreBinaryService.binaryPath()" matTooltip="Copy path">
             <mat-icon>content_copy</mat-icon>
           </button>
           <button mat-icon-button (click)="openCoreDir()" matTooltip="Open folder">
@@ -36,7 +36,7 @@
           </button>
           <button mat-flat-button (click)="updateCore()" [disabled]="updating()">
             <mat-icon>download</mat-icon>
-            {{ core.version() ? 'Update' : 'Install' }}
+            {{ coreBinaryService.version() ? 'Update' : 'Install' }}
           </button>
         </div>
         @if (updating()) {
@@ -64,8 +64,8 @@
             <span class="row-sub muted">Start the service when the app opens</span>
           </div>
           <mat-slide-toggle
-            [checked]="settings.values().autoStart"
-            (change)="settings.set('autoStart', $event.checked)"
+            [checked]="settingsService.values().autoStart"
+            (change)="settingsService.set('autoStart', $event.checked)"
           />
         </div>
         <div class="row">
@@ -75,7 +75,7 @@
               Apply set_system_proxy on mixed/http inbounds that request it
             </span>
           </div>
-          <mat-slide-toggle [checked]="settings.values().systemProxyEnabled" (change)="setSystemProxy($event.checked)" />
+          <mat-slide-toggle [checked]="settingsService.values().systemProxyEnabled" (change)="setSystemProxy($event.checked)" />
         </div>
         <div class="row">
           <div class="row-text">
@@ -90,7 +90,7 @@
               type="number"
               min="1"
               max="65535"
-              [value]="settings.values().clashApiPort"
+              [value]="settingsService.values().clashApiPort"
               (change)="setClashApiPort($any($event.target).value)"
             />
           </mat-form-field>
@@ -108,7 +108,7 @@
               type="number"
               min="1"
               max="65535"
-              [value]="settings.values().apiServicePort"
+              [value]="settingsService.values().apiServicePort"
               (change)="setApiServicePort($any($event.target).value)"
             />
           </mat-form-field>
@@ -126,7 +126,7 @@
         <div class="row">
           <div class="row-text"><span class="row-title">Theme</span></div>
           <mat-button-toggle-group
-            [value]="settings.values().theme"
+            [value]="settingsService.values().theme"
             (change)="setTheme($event.value)"
             hideSingleSelectionIndicator
           >
@@ -141,8 +141,8 @@
             <span class="row-sub muted">Keep running in the system tray when the window is closed</span>
           </div>
           <mat-slide-toggle
-            [checked]="settings.values().closeToTray"
-            (change)="settings.set('closeToTray', $event.checked)"
+            [checked]="settingsService.values().closeToTray"
+            (change)="settingsService.set('closeToTray', $event.checked)"
           />
         </div>
         <div class="row">
@@ -151,9 +151,9 @@
             <span class="row-sub muted">Launch into the system tray without showing the window</span>
           </div>
           <mat-slide-toggle
-            [checked]="settings.values().startMinimized"
-            [disabled]="!settings.values().closeToTray"
-            (change)="settings.set('startMinimized', $event.checked)"
+            [checked]="settingsService.values().startMinimized"
+            [disabled]="!settingsService.values().closeToTray"
+            (change)="settingsService.set('startMinimized', $event.checked)"
           />
         </div>
         <div class="row">
@@ -162,8 +162,8 @@
             <span class="row-sub muted">Show service alerts as desktop notifications while the window is hidden</span>
           </div>
           <mat-slide-toggle
-            [checked]="settings.values().notifications"
-            (change)="settings.set('notifications', $event.checked)"
+            [checked]="settingsService.values().notifications"
+            (change)="settingsService.set('notifications', $event.checked)"
           />
         </div>
         <div class="row">
@@ -172,8 +172,8 @@
             <span class="row-sub muted">Notify when a file is received over Tailscale</span>
           </div>
           <mat-slide-toggle
-            [checked]="settings.values().taildropNotifications"
-            (change)="settings.set('taildropNotifications', $event.checked)"
+            [checked]="settingsService.values().taildropNotifications"
+            (change)="settingsService.set('taildropNotifications', $event.checked)"
           />
         </div>
         <div class="row">
@@ -182,8 +182,8 @@
             <span class="row-sub muted">Taildrop files go straight to the folder below, like the Tailscale app</span>
           </div>
           <mat-slide-toggle
-            [checked]="settings.values().taildropAutoSave"
-            (change)="settings.set('taildropAutoSave', $event.checked)"
+            [checked]="settingsService.values().taildropAutoSave"
+            (change)="settingsService.set('taildropAutoSave', $event.checked)"
           />
         </div>
         <div class="row">
@@ -195,7 +195,7 @@
             <mat-icon>folder_open</mat-icon>
           </button>
           <button mat-stroked-button (click)="chooseTaildropFolder()">Change…</button>
-          @if (settings.values().taildropFolder) {
+          @if (settingsService.values().taildropFolder) {
             <button mat-button (click)="resetTaildropFolder()">Default</button>
           }
         </div>
@@ -210,8 +210,8 @@
               type="number"
               min="100"
               step="500"
-              [value]="settings.values().logMaxLines"
-              (change)="settings.set('logMaxLines', +$any($event.target).value)"
+              [value]="settingsService.values().logMaxLines"
+              (change)="settingsService.set('logMaxLines', +$any($event.target).value)"
             />
           </mat-form-field>
         </div>
@@ -220,7 +220,7 @@
           <div class="cards">
             @for (card of cards; track card) {
               <mat-checkbox
-                [checked]="settings.values().dashboardCards.includes(card)"
+                [checked]="settingsService.values().dashboardCards.includes(card)"
                 (change)="toggleCard(card, $event.checked)"
               >
                 {{ cardLabels[card] }}

@@ -7,7 +7,7 @@ const CYRILLIC_PAIRS: [string, string][] = [
 ];
 
 /** Lower- and upper-case Cyrillic → Latin (BGN/PCGN-style, simplified). */
-const CYRILLIC = new Map<string, string>(
+const CYRILLIC: Map<string, string> = new Map<string, string>(
   CYRILLIC_PAIRS.flatMap(([cyr, lat]) => [
     [cyr, lat],
     [cyr.toUpperCase(), lat.charAt(0).toUpperCase() + lat.slice(1)],

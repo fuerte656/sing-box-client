@@ -1,4 +1,4 @@
-import { Injectable, inject, signal } from '@angular/core';
+import { Service, WritableSignal, inject, signal } from '@angular/core';
 import { Subject } from 'rxjs';
 import { errorMessage } from '../shared/errors';
 import { ClashApiService, ClashEndpoint } from './clash-api.service';
@@ -9,7 +9,7 @@ import { parseConfig } from './json';
 import { LogService } from './log.service';
 import { NativeService, ProcessEvent } from './native.service';
 import { CorePlatform, TunPrivilegeResult } from './platform/core-platform';
-import { ProfileService } from './profile.service';
+import { Profile, ProfileService } from './profile.service';
 import { SettingsService } from './settings.service';
 
 export type ServiceStatus = 'stopped' | 'starting' | 'started' | 'stopping';
@@ -27,47 +27,53 @@ export interface ServiceAlert {
   message?: string;
 }
 
+/** The shell Neutralino spawned for sing-box. */
+interface CoreProcess {
+  id: number;
+  pid: number;
+}
+
 export interface SystemProxyStatus {
   available: boolean;
   enabled: boolean;
 }
 
-const START_TIMEOUT = 30_000;
-const STOP_TIMEOUT = 5_000;
-const SYSTEM_PROXY_INBOUNDS = new Set(['mixed', 'http']);
+const START_TIMEOUT: number = 30_000;
+const STOP_TIMEOUT: number = 5_000;
+const SYSTEM_PROXY_INBOUNDS: Set<string> = new Set(['mixed', 'http']);
 /** First sing-box release with the `api` service (daemon.StartedService over gRPC/gRPC-Web). */
-const API_SERVICE_MIN_VERSION = '1.14.0-alpha';
-const API_SERVICE_TAG = 'sing-box-client-api';
+const API_SERVICE_MIN_VERSION: string = '1.14.0-alpha';
+const API_SERVICE_TAG: string = 'sing-box-client-api';
 
 /** Runs sing-box as a child process; the desktop counterpart of SFA's BoxService. */
-@Injectable({ providedIn: 'root' })
-export class BoxService {
-  private readonly native = inject(NativeService);
-  private readonly platform = inject(CorePlatform);
-  private readonly core = inject(CoreBinaryService);
-  private readonly profiles = inject(ProfileService);
-  private readonly settings = inject(SettingsService);
-  private readonly clash = inject(ClashApiService);
-  private readonly logs = inject(LogService);
-  private readonly daemon = inject(DaemonService);
-  private readonly instance = inject(InstanceService);
+@Service()
+export class SingBoxService {
+  private readonly nativeService: NativeService = inject(NativeService);
+  private readonly platform: CorePlatform = inject(CorePlatform);
+  private readonly coreBinaryService: CoreBinaryService = inject(CoreBinaryService);
+  private readonly profileService: ProfileService = inject(ProfileService);
+  private readonly settingsService: SettingsService = inject(SettingsService);
+  private readonly clashApiService: ClashApiService = inject(ClashApiService);
+  private readonly logService: LogService = inject(LogService);
+  private readonly daemonService: DaemonService = inject(DaemonService);
+  private readonly instanceService: InstanceService = inject(InstanceService);
 
-  readonly status = signal<ServiceStatus>('stopped');
-  readonly systemProxy = signal<SystemProxyStatus>({ available: false, enabled: false });
+  readonly status: WritableSignal<ServiceStatus> = signal<ServiceStatus>('stopped');
+  readonly systemProxy: WritableSignal<SystemProxyStatus> = signal<SystemProxyStatus>({ available: false, enabled: false });
   /** Outbound tags in configuration order, used to order groups like SFA does. */
-  readonly outboundOrder = signal<string[]>([]);
-  readonly alerts = new Subject<ServiceAlert>();
+  readonly outboundOrder: WritableSignal<string[]> = signal<string[]>([]);
+  readonly alerts: Subject<ServiceAlert> = new Subject<ServiceAlert>();
 
-  private process: { id: number; pid: number } | null = null;
+  private process: CoreProcess | null = null;
   /** PID of sing-box itself, which can differ from the spawned (shell) PID. */
   private corePid: number | null = null;
   private exitWaiters: (() => void)[] = [];
-  private listening = false;
+  private listening: boolean = false;
   private queue: Promise<unknown> = Promise.resolve();
 
   constructor() {
-    this.profiles.contentChanged.subscribe((id) => {
-      if (id === this.profiles.selectedId() && this.status() === 'started') {
+    this.profileService.contentChanged.subscribe((id) => {
+      if (id === this.profileService.selectedId() && this.status() === 'started') {
         void this.restart();
       }
     });
@@ -93,7 +99,7 @@ export class BoxService {
   }
 
   async setSystemProxyEnabled(enabled: boolean): Promise<void> {
-    await this.settings.update({ systemProxyEnabled: enabled });
+    await this.settingsService.update({ systemProxyEnabled: enabled });
     if (this.status() === 'started') await this.restart();
   }
 
@@ -102,14 +108,14 @@ export class BoxService {
    * on `relaunch` an elevated copy is starting and the caller should quit this one.
    */
   async acquireTunPrivileges(): Promise<TunPrivilegeResult> {
-    const result = await this.platform.acquireTunPrivileges(await this.core.binary());
+    const result: TunPrivilegeResult = await this.platform.acquireTunPrivileges(await this.coreBinaryService.binary());
     if (result === 'granted') await this.start();
     return result;
   }
 
   /** Serialises start/stop so rapid clicks cannot interleave process management. */
   private enqueue(task: () => Promise<void>): Promise<void> {
-    const next = this.queue.then(task, task);
+    const next: Promise<void> = this.queue.then(task, task);
     this.queue = next.catch(() => undefined);
     return next;
   }
@@ -123,16 +129,16 @@ export class BoxService {
     await this.listen();
     this.status.set('starting');
     try {
-      if (!(await this.core.refresh())) {
+      if (!(await this.coreBinaryService.refresh())) {
         this.fail('coreMissing');
         return;
       }
-      const profile = this.profiles.selected();
+      const profile: Profile | null = this.profileService.selected();
       if (!profile) {
         this.fail('emptyConfiguration');
         return;
       }
-      const content = await this.profiles.readContent(profile.id);
+      const content: string = await this.profileService.readContent(profile.id);
       if (!content.trim()) {
         this.fail('emptyConfiguration');
         return;
@@ -145,25 +151,25 @@ export class BoxService {
         return;
       }
 
-      const endpoint = this.applyOverrides(config);
-      const daemonEndpoint = this.applyApiService(config);
-      const needsTun = (config['inbounds'] ?? []).some((i: { type?: string }) => i.type === 'tun');
-      if (needsTun && !(await this.platform.hasTunPrivileges(await this.core.binary()))) {
+      const endpoint: ClashEndpoint = this.applyOverrides(config);
+      const daemonEndpoint: DaemonEndpoint | null = this.applyApiService(config);
+      const needsTun: boolean = (config['inbounds'] ?? []).some((i: { type?: string }) => i.type === 'tun');
+      if (needsTun && !(await this.platform.hasTunPrivileges(await this.coreBinaryService.binary()))) {
         this.fail('needElevation', this.platform.tunPrivilegeHint);
         return;
       }
 
-      const workDir = await this.native.path('work');
-      await this.native.ensureDir(workDir);
-      const configPath = `${workDir}/config.json`;
-      await this.native.writeJson(configPath, config);
+      const workDir: string = await this.nativeService.path('work');
+      await this.nativeService.ensureDir(workDir);
+      const configPath: string = `${workDir}/config.json`;
+      await this.nativeService.writeJson(configPath, config);
 
-      this.logs.clear();
-      this.clash.resetHistory();
-      this.logs.system(`Starting profile "${profile.name}" with sing-box ${this.core.version()}`);
-      const p = this.platform;
-      const commandLine = [
-        p.quote(p.nativePath(await this.core.binary())),
+      this.logService.clear();
+      this.clashApiService.resetHistory();
+      this.logService.system(`Starting profile "${profile.name}" with sing-box ${this.coreBinaryService.version()}`);
+      const p: CorePlatform = this.platform;
+      const commandLine: string = [
+        p.quote(p.nativePath(await this.coreBinaryService.binary())),
         'run',
         '-c',
         p.quote(p.nativePath(configPath)),
@@ -171,22 +177,22 @@ export class BoxService {
         p.quote(p.nativePath(workDir)),
         '--disable-color',
       ].join(' ');
-      this.process = await this.native.spawn(p.coreCommand(commandLine), workDir);
+      this.process = await this.nativeService.spawn(p.coreCommand(commandLine), workDir);
 
       if (!(await this.waitUntilReady(endpoint))) {
         if (this.process) {
           await this.terminate();
-          this.fail('startService', this.logs.lastErrors() || 'sing-box did not start in time');
+          this.fail('startService', this.logService.lastErrors() || 'sing-box did not start in time');
         } else {
-          this.fail('startService', this.logs.lastErrors() || 'sing-box exited during startup');
+          this.fail('startService', this.logService.lastErrors() || 'sing-box exited during startup');
         }
         return;
       }
       this.corePid = await this.platform.resolveCorePid(this.process!.pid);
-      void this.instance.setCorePid(this.corePid).catch(() => undefined);
+      void this.instanceService.setCorePid(this.corePid).catch(() => undefined);
       void this.platform.prepareStop(this.corePid, STOP_TIMEOUT).catch(() => undefined);
-      this.clash.connect(endpoint);
-      if (daemonEndpoint) this.daemon.connect(daemonEndpoint);
+      this.clashApiService.connect(endpoint);
+      if (daemonEndpoint) this.daemonService.connect(daemonEndpoint);
       this.status.set('started');
     } catch (e) {
       await this.terminate();
@@ -197,8 +203,8 @@ export class BoxService {
   private async doStop(): Promise<void> {
     if (this.status() === 'stopped') return;
     this.status.set('stopping');
-    this.clash.disconnect();
-    this.daemon.disconnect();
+    this.clashApiService.disconnect();
+    this.daemonService.disconnect();
     await this.terminate();
     this.status.set('stopped');
   }
@@ -213,17 +219,17 @@ export class BoxService {
    * and the system proxy switch; everything else in the profile is left as is.
    */
   private applyOverrides(config: Record<string, any>): ClashEndpoint {
-    const experimental = (config['experimental'] ??= {});
-    const clashApi = (experimental['clash_api'] ??= {});
+    const experimental: Record<string, any> = (config['experimental'] ??= {});
+    const clashApi: Record<string, any> = (experimental['clash_api'] ??= {});
     if (!clashApi['external_controller']) {
-      clashApi['external_controller'] = `127.0.0.1:${this.settings.get('clashApiPort')}`;
+      clashApi['external_controller'] = `127.0.0.1:${this.settingsService.get('clashApiPort')}`;
       clashApi['secret'] = crypto.randomUUID();
     }
-    const [host, port] = splitHostPort(String(clashApi['external_controller']));
-    const connectHost = !host || host === '0.0.0.0' || host === '::' ? '127.0.0.1' : host;
+    const [host, port]: [string, string] = splitHostPort(String(clashApi['external_controller']));
+    const connectHost: string = !host || host === '0.0.0.0' || host === '::' ? '127.0.0.1' : host;
 
-    const enabled = this.settings.get('systemProxyEnabled');
-    let available = false;
+    const enabled: boolean = this.settingsService.get('systemProxyEnabled');
+    let available: boolean = false;
     for (const inbound of config['inbounds'] ?? []) {
       if (SYSTEM_PROXY_INBOUNDS.has(inbound.type) && inbound['set_system_proxy']) {
         available = true;
@@ -246,22 +252,22 @@ export class BoxService {
    * A profile that already declares an `api` service keeps it and the client connects to that.
    */
   private applyApiService(config: Record<string, any>): DaemonEndpoint | null {
-    const version = this.core.version();
+    const version: string | null = this.coreBinaryService.version();
     if (!version || compareVersions(version, API_SERVICE_MIN_VERSION) < 0) return null;
     const services: Record<string, any>[] = (config['services'] ??= []);
-    let service = services.find((s) => s['type'] === 'api');
+    let service: Record<string, any> | undefined = services.find((s) => s['type'] === 'api');
     if (!service) {
       service = {
         type: 'api',
         tag: API_SERVICE_TAG,
         listen: '127.0.0.1',
-        listen_port: this.settings.get('apiServicePort'),
+        listen_port: this.settingsService.get('apiServicePort'),
         secret: crypto.randomUUID(),
       };
       services.push(service);
     }
-    const listen = String(service['listen'] ?? '127.0.0.1');
-    const host = !listen || listen === '0.0.0.0' || listen === '::' ? '127.0.0.1' : listen;
+    const listen: string = String(service['listen'] ?? '127.0.0.1');
+    const host: string = !listen || listen === '0.0.0.0' || listen === '::' ? '127.0.0.1' : listen;
     return {
       baseUrl: `http://${host.includes(':') ? `[${host}]` : host}:${service['listen_port']}`,
       secret: service['secret'] ?? '',
@@ -269,9 +275,9 @@ export class BoxService {
   }
 
   private async waitUntilReady(endpoint: ClashEndpoint): Promise<boolean> {
-    const deadline = Date.now() + START_TIMEOUT;
+    const deadline: number = Date.now() + START_TIMEOUT;
     while (this.process && Date.now() < deadline) {
-      if (await this.clash.ping(endpoint)) return true;
+      if (await this.clashApiService.ping(endpoint)) return true;
       await delay(300);
     }
     return false;
@@ -279,7 +285,7 @@ export class BoxService {
 
   /** Last resort when quitting hangs: kills sing-box and its shell, bypassing the task queue. */
   async kill(): Promise<void> {
-    const proc = this.process;
+    const proc: CoreProcess | null = this.process;
     if (!proc) return;
     void this.platform.cancelPreparedStop().catch(() => undefined);
     await this.platform.forceKill(this.corePid ?? proc.pid).catch(() => undefined);
@@ -288,36 +294,36 @@ export class BoxService {
 
   /** Graceful stop first (so sing-box restores the system proxy), then a forced kill. */
   private async terminate(): Promise<void> {
-    const proc = this.process;
+    const proc: CoreProcess | null = this.process;
     if (!proc) return;
-    const corePid = this.corePid ?? (await this.platform.resolveCorePid(proc.pid).catch(() => proc.pid));
-    const exited = this.waitForExit(STOP_TIMEOUT + 2000);
-    void this.instance.logEvent(`stop: sing-box ${corePid} (shell ${proc.pid})`);
-    const startedAt = Date.now();
-    const stopped = await this.platform.stopGracefully(corePid, STOP_TIMEOUT).catch(() => false);
-    void this.instance.logEvent(`stop: graceful ${stopped ? 'ok' : 'failed'} in ${Date.now() - startedAt} ms`);
+    const corePid: number = this.corePid ?? (await this.platform.resolveCorePid(proc.pid).catch(() => proc.pid));
+    const exited: Promise<boolean> = this.waitForExit(STOP_TIMEOUT + 2000);
+    void this.instanceService.logEvent(`stop: sing-box ${corePid} (shell ${proc.pid})`);
+    const startedAt: number = Date.now();
+    const stopped: boolean = await this.platform.stopGracefully(corePid, STOP_TIMEOUT).catch(() => false);
+    void this.instanceService.logEvent(`stop: graceful ${stopped ? 'ok' : 'failed'} in ${Date.now() - startedAt} ms`);
     if (!stopped) {
-      this.logs.system('sing-box did not stop gracefully, killing it', 'warn');
+      this.logService.system('sing-box did not stop gracefully, killing it', 'warn');
       await this.platform.forceKill(corePid).catch(() => undefined);
       await this.platform.forceKill(proc.pid).catch(() => undefined);
     }
     if (!(await exited)) {
-      await this.native.kill(proc.id).catch(() => undefined);
+      await this.nativeService.kill(proc.id).catch(() => undefined);
       await this.waitForExit(STOP_TIMEOUT);
     }
     this.process = null;
     this.corePid = null;
-    void this.instance.setCorePid(null).catch(() => undefined);
+    void this.instanceService.setCorePid(null).catch(() => undefined);
   }
 
   private waitForExit(timeout: number): Promise<boolean> {
     if (!this.process) return Promise.resolve(true);
     return new Promise((resolve) => {
-      const timer = setTimeout(() => {
+      const timer: number = setTimeout(() => {
         this.exitWaiters = this.exitWaiters.filter((w) => w !== done);
         resolve(false);
       }, timeout);
-      const done = () => {
+      const done: () => void = () => {
         clearTimeout(timer);
         resolve(true);
       };
@@ -328,7 +334,7 @@ export class BoxService {
   private async listen(): Promise<void> {
     if (this.listening) return;
     this.listening = true;
-    await this.native.onProcessEvent((event) => this.onProcessEvent(event));
+    await this.nativeService.onProcessEvent((event) => this.onProcessEvent(event));
   }
 
   private onProcessEvent(event: ProcessEvent): void {
@@ -336,23 +342,23 @@ export class BoxService {
     switch (event.action) {
       case 'stdOut':
       case 'stdErr':
-        this.logs.append(String(event.data));
+        this.logService.append(String(event.data));
         break;
       case 'exit': {
-        this.logs.flush();
-        this.logs.system(`sing-box exited with code ${event.data}`, Number(event.data) === 0 ? 'info' : 'error');
+        this.logService.flush();
+        this.logService.system(`sing-box exited with code ${event.data}`, Number(event.data) === 0 ? 'info' : 'error');
         this.process = null;
         this.corePid = null;
-        void this.instance.setCorePid(null).catch(() => undefined);
+        void this.instanceService.setCorePid(null).catch(() => undefined);
         void this.platform.cancelPreparedStop().catch(() => undefined);
-        const waiters = this.exitWaiters;
+        const waiters: (() => void)[] = this.exitWaiters;
         this.exitWaiters = [];
         waiters.forEach((w) => w());
         if (this.status() === 'started') {
           // Crashed or killed externally, not stopped by us.
-          this.clash.disconnect();
-          this.daemon.disconnect();
-          this.fail('unexpectedExit', this.logs.lastErrors() || `Exit code ${event.data}`);
+          this.clashApiService.disconnect();
+          this.daemonService.disconnect();
+          this.fail('unexpectedExit', this.logService.lastErrors() || `Exit code ${event.data}`);
         }
         break;
       }
@@ -361,7 +367,7 @@ export class BoxService {
 }
 
 function splitHostPort(address: string): [string, string] {
-  const index = address.lastIndexOf(':');
+  const index: number = address.lastIndexOf(':');
   if (index < 0) return [address, '9090'];
   return [address.slice(0, index).replace(/^\[|\]$/g, ''), address.slice(index + 1)];
 }

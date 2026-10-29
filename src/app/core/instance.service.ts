@@ -1,4 +1,4 @@
-import { Injectable, inject } from '@angular/core';
+import { Service, inject } from '@angular/core';
 import { events, filesystem } from '@neutralinojs/lib';
 import { NativeService } from './native.service';
 import { CorePlatform } from './platform/core-platform';
@@ -12,38 +12,44 @@ interface InstanceLock {
   corePid?: number | null;
 }
 
+/** Detail of Neutralino's watchFile event. */
+interface WatchFileDetail {
+  id: number;
+  filename: string;
+}
+
 interface QuitRequest {
   pid: number;
   requestedBy: number;
 }
 
-const DIR = 'instance';
-const LOCK_FILE = 'instance.json';
-const QUIT_FILE = 'quit-request.json';
+const DIR: string = 'instance';
+const LOCK_FILE: string = 'instance.json';
+const QUIT_FILE: string = 'quit-request.json';
 /** The previous instance stops sing-box gracefully (up to ~7 s) before it exits. */
-const HANDOVER_TIMEOUT = 15_000;
+const HANDOVER_TIMEOUT: number = 15_000;
 
 /**
  * Keeps a single running copy of the app. A newly launched instance takes over: it asks the
  * running one to quit (via a request file it watches), waits for it to stop sing-box cleanly,
  * and force-kills it only if it does not exit in time.
  */
-@Injectable({ providedIn: 'root' })
+@Service()
 export class InstanceService {
-  private readonly native = inject(NativeService);
-  private readonly platform = inject(CorePlatform);
+  private readonly nativeService: NativeService = inject(NativeService);
+  private readonly platform: CorePlatform = inject(CorePlatform);
   private watcherId: number | null = null;
   private lock: InstanceLock | null = null;
 
   /** Takes over from a running instance, then listens for quit requests from future ones. */
   async claim(onQuitRequested: () => Promise<void>): Promise<void> {
-    const dir = await this.native.path(DIR);
-    await this.native.ensureDir(dir);
-    const image = (await this.platform.processImageName(NL_PID)) ?? '';
+    const dir: string = await this.nativeService.path(DIR);
+    await this.nativeService.ensureDir(dir);
+    const image: string = (await this.platform.processImageName(NL_PID)) ?? '';
 
-    const previous = await this.native.readJson<InstanceLock>(`${dir}/${LOCK_FILE}`);
+    const previous: InstanceLock | null = await this.nativeService.readJson<InstanceLock>(`${dir}/${LOCK_FILE}`);
     if (previous && previous.pid !== NL_PID && (await this.isInstance(previous))) {
-      await this.native.writeJson(`${dir}/${QUIT_FILE}`, { pid: previous.pid, requestedBy: NL_PID } satisfies QuitRequest);
+      await this.nativeService.writeJson(`${dir}/${QUIT_FILE}`, { pid: previous.pid, requestedBy: NL_PID } satisfies QuitRequest);
       if (!(await this.waitForExit(previous))) {
         await this.platform.forceKill(previous.pid).catch(() => undefined);
       }
@@ -54,12 +60,12 @@ export class InstanceService {
       await this.stopLeftoverCore(previous.corePid);
     }
     await this.closeUntracked(image);
-    await this.native.remove(`${dir}/${QUIT_FILE}`);
+    await this.nativeService.remove(`${dir}/${QUIT_FILE}`);
     this.lock = { pid: NL_PID, image, startedAt: Date.now(), corePid: null };
-    await this.native.writeJson(`${dir}/${LOCK_FILE}`, this.lock);
+    await this.nativeService.writeJson(`${dir}/${LOCK_FILE}`, this.lock);
 
     await events.on('watchFile', (ev) => {
-      const detail = (ev as CustomEvent<{ id: number; filename: string }>).detail;
+      const detail: WatchFileDetail = (ev as CustomEvent<WatchFileDetail>).detail;
       if (detail.id === this.watcherId && detail.filename === QUIT_FILE) {
         void this.checkQuitRequest(dir, onQuitRequested);
       }
@@ -73,32 +79,32 @@ export class InstanceService {
    */
   async logEvent(message: string): Promise<void> {
     // Local time, like the watchdog's lines (PowerShell's Get-Date -Format s).
-    const now = new Date();
-    const local = new Date(now.getTime() - now.getTimezoneOffset() * 60_000).toISOString().slice(0, 19);
-    const line = `${local} [app ${NL_PID}] ${message}\n`;
-    await filesystem.appendFile(await this.native.path(DIR, 'events.log'), line).catch(() => undefined);
+    const now: Date = new Date();
+    const local: string = new Date(now.getTime() - now.getTimezoneOffset() * 60_000).toISOString().slice(0, 19);
+    const line: string = `${local} [app ${NL_PID}] ${message}\n`;
+    await filesystem.appendFile(await this.nativeService.path(DIR, 'events.log'), line).catch(() => undefined);
   }
 
   /** The lock file, which also records the running sing-box PID. */
   lockPath(): Promise<string> {
-    return this.native.path(DIR, LOCK_FILE);
+    return this.nativeService.path(DIR, LOCK_FILE);
   }
 
   /** Records the running sing-box PID (null when stopped) so a later copy can clean it up. */
   async setCorePid(corePid: number | null): Promise<void> {
     if (!this.lock) return;
-    const lockPath = await this.lockPath();
-    const current = await this.native.readJson<InstanceLock>(lockPath);
+    const lockPath: string = await this.lockPath();
+    const current: InstanceLock | null = await this.nativeService.readJson<InstanceLock>(lockPath);
     if (current && current.pid !== NL_PID) return; // another copy has taken over
     this.lock = { ...this.lock, corePid };
-    await this.native.writeJson(lockPath, this.lock);
+    await this.nativeService.writeJson(lockPath, this.lock);
   }
 
   /** Removes the lock on a normal exit, unless another instance already owns it. */
   async release(): Promise<void> {
-    const lockPath = await this.lockPath();
-    const lock = await this.native.readJson<InstanceLock>(lockPath);
-    if (lock?.pid === NL_PID) await this.native.remove(lockPath);
+    const lockPath: string = await this.lockPath();
+    const lock: InstanceLock | null = await this.nativeService.readJson<InstanceLock>(lockPath);
+    if (lock?.pid === NL_PID) await this.nativeService.remove(lockPath);
   }
 
   /**
@@ -108,7 +114,7 @@ export class InstanceService {
    */
   private async closeUntracked(image: string): Promise<void> {
     if (!image || image.toLowerCase().startsWith('neutralino')) return;
-    const others = (await this.platform.findProcesses(image)).filter((pid) => pid !== NL_PID);
+    const others: number[] = (await this.platform.findProcesses(image)).filter((pid) => pid !== NL_PID);
     for (const pid of others) {
       await this.platform.forceKill(pid).catch(() => undefined);
     }
@@ -122,17 +128,17 @@ export class InstanceService {
   }
 
   private async checkQuitRequest(dir: string, onQuitRequested: () => Promise<void>): Promise<void> {
-    const request = await this.native.readJson<QuitRequest>(`${dir}/${QUIT_FILE}`);
+    const request: QuitRequest | null = await this.nativeService.readJson<QuitRequest>(`${dir}/${QUIT_FILE}`);
     if (request?.pid === NL_PID) await onQuitRequested();
   }
 
   private async isInstance(lock: InstanceLock): Promise<boolean> {
-    const image = await this.platform.processImageName(lock.pid);
+    const image: string | null = await this.platform.processImageName(lock.pid);
     return !!image && (!lock.image || image.toLowerCase() === lock.image.toLowerCase());
   }
 
   private async waitForExit(lock: InstanceLock): Promise<boolean> {
-    const deadline = Date.now() + HANDOVER_TIMEOUT;
+    const deadline: number = Date.now() + HANDOVER_TIMEOUT;
     while (Date.now() < deadline) {
       if (!(await this.isInstance(lock))) return true;
       await new Promise((resolve) => setTimeout(resolve, 300));

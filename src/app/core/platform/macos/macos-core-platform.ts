@@ -1,11 +1,11 @@
-import { PlatformId, TunPrivilegeResult } from '../core-platform';
+import { ExecResult, PlatformId, TunPrivilegeResult } from '../core-platform';
 import { PosixCorePlatform } from '../posix/posix-core-platform';
 
 export class MacosCorePlatform extends PosixCorePlatform {
   readonly id: PlatformId = 'macos';
-  protected readonly releaseOs = 'darwin';
-  readonly tunPrivilegeAction = 'Restart as administrator';
-  readonly tunPrivilegeHint =
+  protected readonly releaseOs: string = 'darwin';
+  readonly tunPrivilegeAction: string = 'Restart as administrator';
+  readonly tunPrivilegeHint: string =
     'This profile uses a TUN inbound, which requires running the client as root. ' +
     'macOS will ask for an administrator password.';
 
@@ -15,8 +15,8 @@ export class MacosCorePlatform extends PosixCorePlatform {
 
   /** Relaunches the app as root through the standard administrator prompt. */
   async acquireTunPrivileges(): Promise<TunPrivilegeResult> {
-    const script = `do shell script ${appleScriptString(`${this.selfCommand()} >/dev/null 2>&1 &`)} with administrator privileges`;
-    const result = await this.exec(`osascript -e ${this.quote(script)}`);
+    const script: string = `do shell script ${appleScriptString(`${this.selfCommand()} >/dev/null 2>&1 &`)} with administrator privileges`;
+    const result: ExecResult = await this.exec(`osascript -e ${this.quote(script)}`);
     if (result.exitCode !== 0) {
       throw new Error(result.stdErr.trim() || 'Elevation was cancelled');
     }
@@ -24,27 +24,27 @@ export class MacosCorePlatform extends PosixCorePlatform {
   }
 
   async revealFile(path: string): Promise<void> {
-    const result = await this.exec(`open -R ${this.quote(path)}`);
+    const result: ExecResult = await this.exec(`open -R ${this.quote(path)}`);
     if (result.exitCode !== 0) throw new Error(result.stdErr.trim() || 'Failed to reveal file in Finder');
   }
 
   async openFolder(path: string): Promise<void> {
-    const result = await this.exec(`open ${this.quote(path)}`);
+    const result: ExecResult = await this.exec(`open ${this.quote(path)}`);
     if (result.exitCode !== 0) throw new Error(result.stdErr.trim() || 'Failed to open folder in Finder');
   }
 
   protected async launchUrl(url: string): Promise<void> {
-    const result = await this.exec(`open ${this.quote(url)}`);
+    const result: ExecResult = await this.exec(`open ${this.quote(url)}`);
     if (result.exitCode !== 0) throw new Error(result.stdErr.trim() || 'Failed to open the browser');
   }
 
   async openTerminal(command: string, title: string): Promise<void> {
-    const shellCommand = `printf '\\033]0;%s\\007' ${this.quote(title)}; ${command}`;
-    const script = `tell application "Terminal"
+    const shellCommand: string = `printf '\\033]0;%s\\007' ${this.quote(title)}; ${command}`;
+    const script: string = `tell application "Terminal"
   activate
   do script ${appleScriptString(shellCommand)}
 end tell`;
-    const result = await this.exec(`osascript -e ${this.quote(script)}`);
+    const result: ExecResult = await this.exec(`osascript -e ${this.quote(script)}`);
     if (result.exitCode !== 0) {
       throw new Error(result.stdErr.trim() || 'Failed to open Terminal');
     }

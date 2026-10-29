@@ -1,4 +1,4 @@
-import { Injectable, computed, inject, signal } from '@angular/core';
+import { Service, Signal, WritableSignal, computed, inject, signal } from '@angular/core';
 import { CoreBinaryService } from '../core-binary.service';
 import { NativeService } from '../native.service';
 import { CorePlatform } from '../platform/core-platform';
@@ -16,25 +16,25 @@ export interface DaemonEndpoint {
   secret: string;
 }
 
-const RESUBSCRIBE_DELAY = 2000;
+const RESUBSCRIBE_DELAY: number = 2000;
 /**
  * sing-box's API service (daemon.StartedService), the same API SFA's Tools screens use.
- * Available with sing-box 1.14+; BoxService adds the service to the runtime config.
+ * Available with sing-box 1.14+; SingBoxService adds the service to the runtime config.
  */
-@Injectable({ providedIn: 'root' })
+@Service()
 export class DaemonService {
-  private readonly native = inject(NativeService);
-  private readonly platform = inject(CorePlatform);
-  private readonly core = inject(CoreBinaryService);
+  private readonly nativeService: NativeService = inject(NativeService);
+  private readonly platform: CorePlatform = inject(CorePlatform);
+  private readonly coreBinaryService: CoreBinaryService = inject(CoreBinaryService);
 
   private client: DaemonClient | null = null;
   private endpoint: DaemonEndpoint | null = null;
   private session: AbortController | null = null;
 
-  readonly connected = signal(false);
+  readonly connected: WritableSignal<boolean> = signal(false);
   /** Latest Tailscale status of every Tailscale endpoint in the running profile. */
-  readonly tailscale = signal<TailscaleEndpointStatus[]>([]);
-  readonly hasTailscale = computed(() => this.tailscale().length > 0);
+  readonly tailscale: WritableSignal<TailscaleEndpointStatus[]> = signal<TailscaleEndpointStatus[]>([]);
+  readonly hasTailscale: Signal<boolean> = computed(() => this.tailscale().length > 0);
 
   connect(endpoint: DaemonEndpoint): void {
     this.disconnect();
@@ -78,7 +78,7 @@ export class DaemonService {
 
   /** Current inbox once: the first message of SubscribeTaildropInbox. */
   async fetchTaildropInbox(endpointTag: string): Promise<TaildropInbox> {
-    const abort = new AbortController();
+    const abort: AbortController = new AbortController();
     let inbox: TaildropInbox | undefined;
     await this.subscribeTaildropInbox(
       endpointTag,
@@ -114,8 +114,8 @@ export class DaemonService {
     target: string,
     onProgress?: (written: number, total: number) => void,
   ): Promise<void> {
-    const tempDir = await this.native.path('taildrop-incoming');
-    await this.native.ensureDir(tempDir);
+    const tempDir: string = await this.nativeService.path('taildrop-incoming');
+    await this.nativeService.ensureDir(tempDir);
     await downloadToFile(this.require(), endpointTag, name, size, tempDir, target, onProgress);
   }
 
@@ -126,16 +126,16 @@ export class DaemonService {
 
   /** Opens `sing-box api tailscale ssh` in a terminal window (needs a TUN inbound to route to the peer). */
   async openSsh(endpointTag: string, target: string): Promise<void> {
-    const command = [await this.cliPrefix(), 'tailscale', 'ssh', '--endpoint', this.platform.quote(endpointTag), target].join(' ');
+    const command: string = [await this.cliPrefix(), 'tailscale', 'ssh', '--endpoint', this.platform.quote(endpointTag), target].join(' ');
     await this.platform.openTerminal(command, `SSH ${target}`);
   }
 
   private async cliPrefix(): Promise<string> {
-    const endpoint = this.endpoint;
+    const endpoint: DaemonEndpoint | null = this.endpoint;
     if (!endpoint) throw new Error('Service is not running');
-    const p = this.platform;
+    const p: CorePlatform = this.platform;
     return [
-      p.quote(p.nativePath(await this.core.binary())),
+      p.quote(p.nativePath(await this.coreBinaryService.binary())),
       'api',
       '--url',
       p.quote(endpoint.baseUrl),

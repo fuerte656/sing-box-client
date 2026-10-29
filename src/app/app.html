@@ -7,7 +7,7 @@
         <span class="subtitle">{{ statusLabel() }}</span>
       </div>
     </div>
-    @if (taildrop.receiving(); as r) {
+    @if (taildropService.receiving(); as r) {
       <a class="receiving" [routerLink]="['/tools/tailscale', r.endpointTag, 'taildrop']">
         <div class="receiving-text">
           <mat-icon>downloading</mat-icon>
@@ -17,7 +17,7 @@
         <mat-progress-bar mode="determinate" [value]="r.percent" />
       </a>
     }
-    @if (sender.active(); as a) {
+    @if (taildropSendService.active(); as a) {
       <a class="receiving sending" [routerLink]="['/tools/tailscale', a.transfer.endpointTag, 'peer', a.transfer.peerStableID]">
         <div class="receiving-text">
           <mat-icon>upload</mat-icon>
@@ -39,7 +39,7 @@
     </mat-nav-list>
   </mat-sidenav>
   <mat-sidenav-content class="content">
-    @if (!native.available) {
+    @if (!nativeService.available) {
       <div class="banner">
         <mat-icon>warning</mat-icon>
         Running outside Neutralino: native features are unavailable. Start the app with <code>npm run dev</code>.

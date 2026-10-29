@@ -1,11 +1,18 @@
-import { events, os } from '@neutralinojs/lib';
+import { events, os, SpawnedProcess } from '@neutralinojs/lib';
 import { cyrillicToLatin, normalizeText } from '../../../shared/text-utils';
-import { CorePlatform, ExecResult, TunPrivilegeResult } from '../core-platform';
+import { CorePlatform, ExecResult, PlatformId, TunPrivilegeResult } from '../core-platform';
 import INTERRUPT_SCRIPT from './scripts/interrupt.ps1';
 import CONSOLE_SOURCE from './scripts/SingBoxClientConsole.cs';
 import WATCH_APP_SCRIPT from './scripts/watch-app.ps1';
 
 /** interrupt.ps1 started ahead of a stop (see WindowsCorePlatform.prepareStop). */
+/** Detail of Neutralino's spawnedProcess event. */
+interface SpawnedProcessEvent {
+  id: number;
+  action: string;
+  data: unknown;
+}
+
 interface Standby {
   /** sing-box PID it was started for. */
   pid: number;
@@ -17,16 +24,16 @@ interface Standby {
 }
 
 /** PowerShell single-quoted (literal) string. */
-const psQuote = (s: string) => `'${s.replace(/'/g, "''")}'`;
+const psQuote: (s: string) => string = (s: string) => `'${s.replace(/'/g, "''")}'`;
 
 /** cmd.exe's limit for a whole command line; Neutralino runs every command through cmd /c. */
-const MAX_COMMAND_LENGTH = 8191;
+const MAX_COMMAND_LENGTH: number = 8191;
 
 /**
  * The C# helper on one line: it is passed inside the encoded command, which has to stay short.
  * Line comments go first, or on one line they would swallow the rest of the source.
  */
-const CONSOLE_SOURCE_MIN = CONSOLE_SOURCE.replace(/\/\/.*$/gm, '').replace(/\s+/g, ' ').trim();
+const CONSOLE_SOURCE_MIN: string = CONSOLE_SOURCE.replace(/\/\/.*$/gm, '').replace(/\s+/g, ' ').trim();
 
 /**
  * A script as PowerShell's -EncodedCommand expects it: UTF-16LE, base64 (so about 2.7 characters
@@ -34,25 +41,25 @@ const CONSOLE_SOURCE_MIN = CONSOLE_SOURCE.replace(/\/\/.*$/gm, '').replace(/\s+/
  * MAX_COMMAND_LENGTH.
  */
 function encodeCommand(script: string): string {
-  const body = script.replace(/^[ \t]*#.*(\r?\n|$)/gm, '').replace(/^[ \t]+/gm, '');
-  let binary = '';
-  for (let i = 0; i < body.length; i++) {
-    const code = body.charCodeAt(i);
+  const body: string = script.replace(/^[ \t]*#.*(\r?\n|$)/gm, '').replace(/^[ \t]+/gm, '');
+  let binary: string = '';
+  for (let i: number = 0; i < body.length; i++) {
+    const code: number = body.charCodeAt(i);
     binary += String.fromCharCode(code & 0xff, code >> 8);
   }
   return btoa(binary);
 }
 
 export class WindowsCorePlatform extends CorePlatform {
-  readonly id = 'windows';
-  readonly binaryName = 'sing-box.exe';
-  readonly tunPrivilegeAction = 'Restart as administrator';
-  readonly tunPrivilegeHint =
+  readonly id: PlatformId = 'windows';
+  readonly binaryName: string = 'sing-box.exe';
+  readonly tunPrivilegeAction: string = 'Restart as administrator';
+  readonly tunPrivilegeHint: string =
     'This profile uses a TUN inbound, which requires running the client as administrator.';
 
   private standby: Standby | null = null;
-  private readonly standbyExits = new Map<number, (code: number) => void>();
-  private listeningToStandby = false;
+  private readonly standbyExits: Map<number, (code: number) => void> = new Map<number, (code: number) => void>();
+  private listeningToStandby: boolean = false;
 
   releaseAssetName(version: string, arch: string): string {
     return `sing-box-${version}-windows-${this.goArch(arch)}.zip`;
@@ -68,7 +75,7 @@ export class WindowsCorePlatform extends CorePlatform {
 
   async download(url: string, target: string, userAgent: string): Promise<void> {
     // curl.exe ships with Windows 10 1803+.
-    const result = await this.exec(
+    const result: ExecResult = await this.exec(
       `curl.exe -fsSL --connect-timeout 15 --max-time 300 -A ${this.quote(userAgent)} -o ${this.quote(this.nativePath(target))} ${this.quote(url)}`,
     );
     if (result.exitCode !== 0) {
@@ -78,8 +85,8 @@ export class WindowsCorePlatform extends CorePlatform {
 
   async extract(archive: string, targetDir: string): Promise<void> {
     // Use the system bsdtar (handles .zip) rather than a tar from Git or MSYS on PATH.
-    const systemRoot = (await os.getEnv('SystemRoot')) || 'C:\\Windows';
-    const result = await this.exec(
+    const systemRoot: string = (await os.getEnv('SystemRoot')) || 'C:\\Windows';
+    const result: ExecResult = await this.exec(
       `${this.quote(`${systemRoot}\\System32\\tar.exe`)} -xf ${this.quote(this.nativePath(archive))} -C ${this.quote(this.nativePath(targetDir))}`,
     );
     if (result.exitCode !== 0) {
@@ -93,10 +100,10 @@ export class WindowsCorePlatform extends CorePlatform {
 
   async resolveCorePid(spawnedPid: number): Promise<number> {
     // Neutralino runs spawned commands as `cmd.exe /c <command>`; find the sing-box child.
-    const result = await this.powershell(
+    const result: ExecResult = await this.powershell(
       `(Get-CimInstance Win32_Process -Filter "ParentProcessId=${spawnedPid} AND Name='${this.binaryName}'").ProcessId`,
     );
-    const pid = parseInt(result.stdOut.trim(), 10);
+    const pid: number = parseInt(result.stdOut.trim(), 10);
     return Number.isFinite(pid) ? pid : spawnedPid;
   }
 
@@ -116,12 +123,12 @@ export class WindowsCorePlatform extends CorePlatform {
    */
   override async prepareStop(pid: number, timeoutMs: number): Promise<void> {
     await this.cancelPreparedStop();
-    const command = this.powershellCommand(
+    const command: string = this.powershellCommand(
       INTERRUPT_SCRIPT,
       `-TargetPid ${pid} -TimeoutMs ${timeoutMs} -ConsoleSource ${psQuote(CONSOLE_SOURCE_MIN)} -Standby`,
     );
     this.listenToStandby();
-    const proc = await os.spawnProcess(command);
+    const proc: SpawnedProcess = await os.spawnProcess(command);
     const standby: Standby = { pid, id: proc.id, exited: false, exit: Promise.resolve(-1) };
     standby.exit = new Promise<number>((resolve) =>
       this.standbyExits.set(proc.id, (code) => {
@@ -133,25 +140,25 @@ export class WindowsCorePlatform extends CorePlatform {
   }
 
   override async cancelPreparedStop(): Promise<void> {
-    const standby = this.standby;
+    const standby: Standby | null = this.standby;
     this.standby = null;
     // Closing stdin makes the script exit (code 5).
     if (standby && !standby.exited) await os.updateSpawnedProcess(standby.id, 'stdInEnd').catch(() => undefined);
   }
 
   async stopGracefully(pid: number, timeoutMs: number): Promise<boolean> {
-    const standby = this.standby;
+    const standby: Standby | null = this.standby;
     this.standby = null;
     if (standby?.pid === pid && !standby.exited) {
       try {
         await os.updateSpawnedProcess(standby.id, 'stdIn', 'stop\n');
-        const timeout = new Promise<number>((resolve) => setTimeout(() => resolve(-1), timeoutMs + 3000));
+        const timeout: Promise<number> = new Promise<number>((resolve) => setTimeout(() => resolve(-1), timeoutMs + 3000));
         return (await Promise.race([standby.exit, timeout])) === 0;
       } catch {
         // Gone in the meantime: start the script now instead.
       }
     }
-    const result = await this.powershell(
+    const result: ExecResult = await this.powershell(
       INTERRUPT_SCRIPT,
       `-TargetPid ${pid} -TimeoutMs ${timeoutMs} -ConsoleSource ${psQuote(CONSOLE_SOURCE_MIN)}`,
     );
@@ -173,13 +180,13 @@ export class WindowsCorePlatform extends CorePlatform {
 
   async processImageName(pid: number): Promise<string | null> {
     // CSV row: "image","pid","session","#","mem"; tasklist prints an INFO line when nothing matches.
-    const result = await this.exec(`tasklist /FI "PID eq ${pid}" /FO CSV /NH`);
-    const match = /^"([^"]+)","(\d+)"/m.exec(result.stdOut);
+    const result: ExecResult = await this.exec(`tasklist /FI "PID eq ${pid}" /FO CSV /NH`);
+    const match: RegExpExecArray | null = /^"([^"]+)","(\d+)"/m.exec(result.stdOut);
     return match && Number(match[2]) === pid ? match[1] : null;
   }
 
   async findProcesses(imageName: string): Promise<number[]> {
-    const result = await this.exec(`tasklist /FI "IMAGENAME eq ${imageName.replace(/"/g, '')}" /FO CSV /NH`);
+    const result: ExecResult = await this.exec(`tasklist /FI "IMAGENAME eq ${imageName.replace(/"/g, '')}" /FO CSV /NH`);
     return [...result.stdOut.matchAll(/^"[^"]+","(\d+)"/gm)].map((m) => Number(m[1]));
   }
 
@@ -210,7 +217,7 @@ export class WindowsCorePlatform extends CorePlatform {
 
   async openTerminal(command: string, title: string): Promise<void> {
     // `start` opens a new console window; the extra quotes keep cmd /k from stripping the command's own.
-    const result = await this.exec(`start "${title.replace(/"/g, '')}" cmd /k "${command}"`);
+    const result: ExecResult = await this.exec(`start "${title.replace(/"/g, '')}" cmd /k "${command}"`);
     if (result.exitCode !== 0) {
       throw new Error(result.stdErr.trim() || 'Failed to open a terminal');
     }
@@ -230,17 +237,17 @@ export class WindowsCorePlatform extends CorePlatform {
    * environment on, so an elevated PowerShell sets it and starts the app from there.
    */
   async acquireTunPrivileges(): Promise<TunPrivilegeResult> {
-    const [exe, ...args] = NL_ARGS;
-    const exeName = exe.split(/[\\/]/).pop()!;
-    const userDataFolder = `${await os.getEnv('APPDATA')}\\${exeName}\\EBWebView-admin`;
-    const argumentList = args.length ? ` -ArgumentList ${args.map(psQuote).join(',')}` : '';
-    const elevated =
+    const [exe, ...args]: string[] = NL_ARGS;
+    const exeName: string = exe.split(/[\\/]/).pop()!;
+    const userDataFolder: string = `${await os.getEnv('APPDATA')}\\${exeName}\\EBWebView-admin`;
+    const argumentList: string = args.length ? ` -ArgumentList ${args.map(psQuote).join(',')}` : '';
+    const elevated: string =
       `$env:WEBVIEW2_USER_DATA_FOLDER = ${psQuote(userDataFolder)}; ` +
       `Start-Process -FilePath ${psQuote(exe)}${argumentList} -WorkingDirectory ${psQuote(NL_PATH)}`;
-    const script =
+    const script: string =
       `Start-Process -FilePath powershell -Verb RunAs -WindowStyle Hidden ` +
       `-ArgumentList '-NoProfile','-NonInteractive','-EncodedCommand','${encodeCommand(elevated)}'`;
-    const result = await this.powershell(script);
+    const result: ExecResult = await this.powershell(script);
     if (result.exitCode !== 0) {
       throw new Error(result.stdErr.trim() || 'Elevation was cancelled');
     }
@@ -258,8 +265,8 @@ export class WindowsCorePlatform extends CorePlatform {
   }
 
   private powershellCommand(script: string, args = ''): string {
-    const body = args ? `& {${script}} ${args}` : script;
-    const command = `powershell -NoProfile -NonInteractive -ExecutionPolicy Bypass -EncodedCommand ${encodeCommand(body)}`;
+    const body: string = args ? `& {${script}} ${args}` : script;
+    const command: string = `powershell -NoProfile -NonInteractive -ExecutionPolicy Bypass -EncodedCommand ${encodeCommand(body)}`;
     // Past the limit cmd.exe fails without running anything, which looks like the script did nothing.
     if (command.length > MAX_COMMAND_LENGTH) {
       throw new Error(`PowerShell command too long (${command.length} > ${MAX_COMMAND_LENGTH})`);
@@ -272,8 +279,8 @@ export class WindowsCorePlatform extends CorePlatform {
     if (this.listeningToStandby) return;
     this.listeningToStandby = true;
     void events.on('spawnedProcess', (ev) => {
-      const { id, action, data } = (ev as CustomEvent<{ id: number; action: string; data: unknown }>).detail;
-      const onExit = this.standbyExits.get(id);
+      const { id, action, data }: SpawnedProcessEvent = (ev as CustomEvent<SpawnedProcessEvent>).detail;
+      const onExit: ((code: number) => void) | undefined = this.standbyExits.get(id);
       if (!onExit || action !== 'exit') return;
       this.standbyExits.delete(id);
       onExit(Number(data));

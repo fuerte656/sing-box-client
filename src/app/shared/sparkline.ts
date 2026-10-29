@@ -1,4 +1,4 @@
-import { Component, computed, input } from '@angular/core';
+import { Component, computed, input, Signal, InputSignal } from '@angular/core';
 
 /** Minimal SVG area chart for the traffic cards. */
 @Component({
@@ -17,25 +17,25 @@ import { Component, computed, input } from '@angular/core';
   `,
 })
 export class Sparkline {
-  readonly values = input.required<number[]>();
-  readonly capacity = input(60);
+  readonly values: InputSignal<number[]> = input.required<number[]>();
+  readonly capacity: InputSignal<number> = input(60);
 
-  private readonly points = computed(() => {
-    const values = this.values();
-    const max = Math.max(1, ...values);
-    const step = 100 / (this.capacity() - 1);
-    const offset = this.capacity() - values.length;
+  private readonly points: Signal<(readonly [number, number])[]> = computed(() => {
+    const values: number[] = this.values();
+    const max: number = Math.max(1, ...values);
+    const step: number = 100 / (this.capacity() - 1);
+    const offset: number = this.capacity() - values.length;
     return values.map((v, i) => [(offset + i) * step, 32 - (v / max) * 30] as const);
   });
 
-  readonly line = computed(() =>
+  readonly line: Signal<string> = computed(() =>
     this.points()
       .map(([x, y], i) => `${i ? 'L' : 'M'}${x.toFixed(2)},${y.toFixed(2)}`)
       .join(' '),
   );
 
-  readonly area = computed(() => {
-    const points = this.points();
+  readonly area: Signal<string> = computed(() => {
+    const points: (readonly [number, number])[] = this.points();
     if (!points.length) return '';
     return `${this.line()} L${points[points.length - 1][0].toFixed(2)},32 L${points[0][0].toFixed(2)},32 Z`;
   });

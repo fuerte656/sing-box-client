@@ -1,4 +1,4 @@
-import { Injectable, inject } from '@angular/core';
+import { Service, inject } from '@angular/core';
 import { NativeService } from './native.service';
 import { BaseSettings } from './settings/base-settings';
 
@@ -54,9 +54,9 @@ export interface AppSettings {
 }
 
 /** Application settings, persisted to <data>/settings.json. */
-@Injectable({ providedIn: 'root' })
+@Service()
 export class SettingsService extends BaseSettings<AppSettings> {
-  protected readonly fileName = 'settings.json';
+  protected readonly fileName: string = 'settings.json';
   protected readonly defaults: AppSettings = {
     selectedProfile: -1,
     theme: 'system',
@@ -80,8 +80,8 @@ export class SettingsService extends BaseSettings<AppSettings> {
   }
 
   protected override normalize(values: AppSettings): AppSettings {
-    const port = (value: number, fallback: number) => {
-      const n = Math.trunc(Number(value));
+    const port: (value: number, fallback: number) => number = (value: number, fallback: number) => {
+      const n: number = Math.trunc(Number(value));
       return n >= 1 && n <= 65535 ? n : fallback;
     };
     return {

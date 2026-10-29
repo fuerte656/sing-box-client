@@ -19,7 +19,7 @@ export function ipv6(peer: TailscalePeer): string | undefined {
 
 /** Every peer of an endpoint, including this device. */
 export function allPeers(status: TailscaleEndpointStatus): TailscalePeer[] {
-  const peers = status.userGroups.flatMap((g) => g.peers);
+  const peers: TailscalePeer[] = status.userGroups.flatMap((g) => g.peers);
   return status.self ? [status.self, ...peers] : peers;
 }
 
@@ -51,7 +51,7 @@ export function stateLabel(status: TailscaleEndpointStatus): string {
 
 /** Relative time like "in 3 days" / "5 minutes ago" for Unix-second timestamps. */
 export function relativeTime(unixSeconds: number): string {
-  const diff = unixSeconds * 1000 - Date.now();
+  const diff: number = unixSeconds * 1000 - Date.now();
   const units: [Intl.RelativeTimeFormatUnit, number][] = [
     ['year', 365 * 86400_000],
     ['month', 30 * 86400_000],
@@ -59,7 +59,7 @@ export function relativeTime(unixSeconds: number): string {
     ['hour', 3600_000],
     ['minute', 60_000],
   ];
-  const format = new Intl.RelativeTimeFormat(undefined, { numeric: 'auto' });
+  const format: Intl.RelativeTimeFormat = new Intl.RelativeTimeFormat(undefined, { numeric: 'auto' });
   for (const [unit, ms] of units) {
     if (Math.abs(diff) >= ms) return format.format(Math.round(diff / ms), unit);
   }

@@ -1,5 +1,5 @@
 import { Location } from '@angular/common';
-import { Component, DestroyRef, computed, inject, input, signal } from '@angular/core';
+import { Component, DestroyRef, WritableSignal, Signal, InputSignal, computed, inject, input, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatFormFieldModule } from '@angular/material/form-field';
@@ -21,6 +21,7 @@ import { Dialogs } from '../../../shared/dialogs';
 import { BytesPipe } from '../../../shared/format';
 import { PING_HISTORY, PingChart, PingSample } from './ping-chart';
 import { findPeer, ipv4, ipv6, magicDnsName, peerTitle, relativeTime } from './tailscale-utils';
+import { TailscaleEndpointStatus, TailscalePeer } from '../../../core/daemon/models';
 
 interface AddressRow {
   value: string;
@@ -44,43 +45,43 @@ interface AddressRow {
   styleUrl: './tailscale.scss',
 })
 export class TailscalePeerScreen {
-  private readonly daemon = inject(DaemonService);
-  readonly sender = inject(TaildropSendService);
-  private readonly dialogs = inject(Dialogs);
-  private readonly location = inject(Location);
+  private readonly daemonService: DaemonService = inject(DaemonService);
+  readonly taildropSendService: TaildropSendService = inject(TaildropSendService);
+  private readonly dialogs: Dialogs = inject(Dialogs);
+  private readonly location: Location = inject(Location);
 
   /** Route parameters. */
-  readonly tag = input.required<string>();
-  readonly peerId = input.required<string>();
+  readonly tag: InputSignal<string> = input.required<string>();
+  readonly peerId: InputSignal<string> = input.required<string>();
 
-  readonly endpoint = computed(() => this.daemon.tailscaleEndpoint(this.tag()));
-  readonly peer = computed(() => findPeer(this.endpoint(), this.peerId()));
-  readonly isSelf = computed(() => this.endpoint()?.self?.stableID === this.peerId());
-  readonly title = computed(() => {
-    const p = this.peer();
+  readonly endpoint: Signal<TailscaleEndpointStatus | undefined> = computed(() => this.daemonService.tailscaleEndpoint(this.tag()));
+  readonly peer: Signal<TailscalePeer | undefined> = computed(() => findPeer(this.endpoint(), this.peerId()));
+  readonly isSelf: Signal<boolean> = computed(() => this.endpoint()?.self?.stableID === this.peerId());
+  readonly title: Signal<string> = computed(() => {
+    const p: TailscalePeer | undefined = this.peer();
     return p ? peerTitle(p) : 'Peer';
   });
 
-  readonly addresses = computed<AddressRow[]>(() => {
-    const p = this.peer();
+  readonly addresses: Signal<AddressRow[]> = computed<AddressRow[]>(() => {
+    const p: TailscalePeer | undefined = this.peer();
     if (!p) return [];
     const rows: AddressRow[] = [];
     if (p.dnsName) rows.push({ value: magicDnsName(p), label: 'MagicDNS' });
     if (p.hostName) rows.push({ value: p.hostName, label: 'Hostname' });
-    const v4 = ipv4(p);
-    const v6 = ipv6(p);
+    const v4: string | undefined = ipv4(p);
+    const v6: string | undefined = ipv6(p);
     if (v4) rows.push({ value: v4, label: 'IPv4' });
     if (v6) rows.push({ value: v6, label: 'IPv6' });
     return rows;
   });
 
-  readonly canSendFiles = computed(() => {
-    const p = this.peer();
+  readonly canSendFiles: Signal<boolean> = computed(() => {
+    const p: TailscalePeer | undefined = this.peer();
     return !!p && !this.isSelf() && !!this.endpoint()?.canShareFiles && p.canReceiveFiles;
   });
 
-  readonly keyExpiry = computed(() => {
-    const p = this.peer();
+  readonly keyExpiry: Signal<string> = computed(() => {
+    const p: TailscalePeer | undefined = this.peer();
     if (!p) return '';
     if (p.expired) return 'Expired';
     if (!p.keyExpiry) return 'Disabled';
@@ -88,18 +89,18 @@ export class TailscalePeerScreen {
   });
 
   // Ping
-  readonly pinging = signal(false);
-  readonly pingResults = signal<PingSample[]>([]);
+  readonly pinging: WritableSignal<boolean> = signal(false);
+  readonly pingResults: WritableSignal<PingSample[]> = signal<PingSample[]>([]);
   private pingAbort: AbortController | null = null;
 
   // Taildrop send
-  readonly dragging = signal(false);
+  readonly dragging: WritableSignal<boolean> = signal(false);
   /** This peer's transfers (session), newest first. */
-  readonly transfers = computed(() => this.sender.forPeer(this.peerId()));
-  readonly hasFinished = computed(() => this.transfers().some((t) => t.state !== 'sending'));
+  readonly transfers: Signal<OutgoingTransfer[]> = computed(() => this.taildropSendService.forPeer(this.peerId()));
+  readonly hasFinished: Signal<boolean> = computed(() => this.transfers().some((t) => t.state !== 'sending'));
 
   // SSH
-  readonly sshUser = signal('');
+  readonly sshUser: WritableSignal<string> = signal('');
 
   constructor() {
     inject(DestroyRef).onDestroy(() => this.pingAbort?.abort());
@@ -119,13 +120,13 @@ export class TailscalePeerScreen {
       this.pingAbort?.abort();
       return;
     }
-    const p = this.peer();
-    const ip = p && (ipv4(p) ?? p.tailscaleIPs[0]);
+    const p: TailscalePeer | undefined = this.peer();
+    const ip: string | undefined = p && (ipv4(p) ?? p.tailscaleIPs[0]);
     if (!ip) return;
     this.pingResults.set([]);
     this.pinging.set(true);
     this.pingAbort = new AbortController();
-    this.daemon
+    this.daemonService
       .ping(
         this.tag(),
         ip,
@@ -142,7 +143,7 @@ export class TailscalePeerScreen {
   }
 
   async chooseFiles(): Promise<void> {
-    const paths = await os.showOpenDialog('Send files with Taildrop', { multiSelections: true });
+    const paths: string[] = await os.showOpenDialog('Send files with Taildrop', { multiSelections: true });
     if (!paths.length) return;
     try {
       this.send(await Promise.all(paths.map((path) => sourceFromPath(path))));
@@ -161,7 +162,7 @@ export class TailscalePeerScreen {
   onDrop(event: DragEvent): void {
     event.preventDefault();
     this.dragging.set(false);
-    const files = Array.from(event.dataTransfer?.files ?? []);
+    const files: File[] = Array.from(event.dataTransfer?.files ?? []);
     if (files.length) this.send(files.map(sourceFromFile));
   }
 
@@ -170,18 +171,18 @@ export class TailscalePeerScreen {
   }
 
   transferPercent(transfer: OutgoingTransfer): number {
-    const total = transfer.files.reduce((sum, f) => sum + f.size, 0);
-    const sent = transfer.files.reduce((sum, f) => sum + f.sent, 0);
+    const total: number = transfer.files.reduce((sum, f) => sum + f.size, 0);
+    const sent: number = transfer.files.reduce((sum, f) => sum + f.sent, 0);
     return total ? Math.min(100, (sent / total) * 100) : 0;
   }
 
   async openSsh(): Promise<void> {
-    const p = this.peer();
+    const p: TailscalePeer | undefined = this.peer();
     if (!p) return;
-    const host = magicDnsName(p) || ipv4(p) || p.tailscaleIPs[0];
-    const user = this.sshUser().trim();
+    const host: string = magicDnsName(p) || ipv4(p) || p.tailscaleIPs[0];
+    const user: string = this.sshUser().trim();
     try {
-      await this.daemon.openSsh(this.tag(), user ? `${user}@${host}` : host);
+      await this.daemonService.openSsh(this.tag(), user ? `${user}@${host}` : host);
     } catch (e) {
       await this.dialogs.error('Failed to open SSH', e);
     }
@@ -192,9 +193,9 @@ export class TailscalePeerScreen {
   }
 
   private send(sources: SendSource[]): void {
-    const p = this.peer();
+    const p: TailscalePeer | undefined = this.peer();
     if (!p) return;
-    this.sender.send(this.tag(), p.stableID, peerTitle(p), sources);
+    this.taildropSendService.send(this.tag(), p.stableID, peerTitle(p), sources);
   }
 
 }

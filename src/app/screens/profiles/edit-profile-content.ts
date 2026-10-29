@@ -1,11 +1,11 @@
 import { Location } from '@angular/common';
-import { Component, computed, effect, inject, input, signal, viewChild } from '@angular/core';
+import { Component, computed, effect, inject, input, Signal, InputSignal, signal, viewChild, WritableSignal } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { CoreBinaryService } from '../../core/core-binary.service';
-import { ProfileService, validateJson } from '../../core/profile.service';
+import { Profile, ProfileService, validateJson } from '../../core/profile.service';
 import { Dialogs } from '../../shared/dialogs';
 import { JsonEditor } from '../../shared/json-editor';
 
@@ -16,27 +16,27 @@ import { JsonEditor } from '../../shared/json-editor';
   styleUrl: './edit-profile-content.scss',
 })
 export class EditProfileContent {
-  private readonly profiles = inject(ProfileService);
-  private readonly core = inject(CoreBinaryService);
-  private readonly dialogs = inject(Dialogs);
-  private readonly location = inject(Location);
-  private readonly editor = viewChild.required(JsonEditor);
+  private readonly profileService: ProfileService = inject(ProfileService);
+  private readonly coreBinaryService: CoreBinaryService = inject(CoreBinaryService);
+  private readonly dialogs: Dialogs = inject(Dialogs);
+  private readonly location: Location = inject(Location);
+  private readonly editor: Signal<JsonEditor> = viewChild.required(JsonEditor);
 
   /** Route parameter. */
-  readonly id = input.required<string>();
+  readonly id: InputSignal<string> = input.required<string>();
 
-  readonly profile = computed(() => this.profiles.get(Number(this.id())));
-  readonly readOnly = computed(() => this.profile()?.type === 'remote');
-  readonly original = signal('');
-  readonly content = signal('');
-  readonly loading = signal(true);
-  readonly busy = signal(false);
-  readonly dirty = computed(() => !this.loading() && this.content() !== this.original());
+  readonly profile: Signal<Profile | undefined> = computed(() => this.profileService.get(Number(this.id())));
+  readonly readOnly: Signal<boolean> = computed(() => this.profile()?.type === 'remote');
+  readonly original: WritableSignal<string> = signal('');
+  readonly content: WritableSignal<string> = signal('');
+  readonly loading: WritableSignal<boolean> = signal(true);
+  readonly busy: WritableSignal<boolean> = signal(false);
+  readonly dirty: Signal<boolean> = computed(() => !this.loading() && this.content() !== this.original());
 
   constructor() {
     effect(() => {
-      const id = Number(this.id());
-      void this.profiles.readContent(id).then((text) => {
+      const id: number = Number(this.id());
+      void this.profileService.readContent(id).then((text) => {
         this.original.set(text);
         this.content.set(text);
         this.loading.set(false);
@@ -55,7 +55,7 @@ export class EditProfileContent {
   async check(): Promise<void> {
     this.busy.set(true);
     try {
-      const error = await this.core.check(this.content());
+      const error: string | null = await this.coreBinaryService.check(this.content());
       if (error) await this.dialogs.error('Configuration check failed', error);
       else this.dialogs.toast('Configuration is valid');
     } catch (e) {
@@ -66,7 +66,7 @@ export class EditProfileContent {
   }
 
   async save(): Promise<void> {
-    const profile = this.profile();
+    const profile: Profile | undefined = this.profile();
     if (!profile) return;
     try {
       validateJson(this.content());
@@ -76,7 +76,7 @@ export class EditProfileContent {
     }
     this.busy.set(true);
     try {
-      await this.profiles.writeContent(profile.id, this.content());
+      await this.profileService.writeContent(profile.id, this.content());
       this.original.set(this.content());
       this.dialogs.toast('Configuration saved');
     } catch (e) {
@@ -88,7 +88,7 @@ export class EditProfileContent {
 
   async back(): Promise<void> {
     if (this.dirty()) {
-      const discard = await this.dialogs.confirm({
+      const discard: boolean = await this.dialogs.confirm({
         title: 'Unsaved changes',
         message: 'Discard your changes to this configuration?',
         confirm: 'Discard',

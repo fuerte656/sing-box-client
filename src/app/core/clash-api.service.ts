@@ -1,4 +1,4 @@
-import { Injectable, computed, signal } from '@angular/core';
+import { Service, Signal, WritableSignal, computed, signal } from '@angular/core';
 
 export interface ClashEndpoint {
   baseUrl: string;
@@ -32,6 +32,22 @@ export interface Connection {
   closedAt?: number;
 }
 
+/** GET /configs, the part used here. */
+interface ClashConfigs {
+  mode: string;
+  'mode-list'?: string[];
+}
+
+/** GET /proxies: outbounds and groups by name. */
+interface ClashProxies {
+  proxies: Record<string, any>;
+}
+
+/** One entry of a proxy's delay test history. */
+interface DelayHistory {
+  delay: number;
+}
+
 export interface OutboundItem {
   name: string;
   type: string;
@@ -46,32 +62,32 @@ export interface OutboundGroup {
   items: OutboundItem[];
 }
 
-const HISTORY_LENGTH = 60;
-const MAX_CLOSED_CONNECTIONS = 500;
-const GROUP_TYPES = new Set(['Selector', 'URLTest', 'Fallback', 'LoadBalance']);
-export const DEFAULT_TEST_URL = 'https://www.gstatic.com/generate_204';
+const HISTORY_LENGTH: number = 60;
+const MAX_CLOSED_CONNECTIONS: number = 500;
+const GROUP_TYPES: Set<string> = new Set(['Selector', 'URLTest', 'Fallback', 'LoadBalance']);
+export const DEFAULT_TEST_URL: string = 'https://www.gstatic.com/generate_204';
 
 /** Client for sing-box's Clash-compatible API (experimental.clash_api). */
-@Injectable({ providedIn: 'root' })
+@Service()
 export class ClashApiService {
   private endpoint: ClashEndpoint | null = null;
   private sockets: WebSocket[] = [];
   private reconnectTimers: ReturnType<typeof setTimeout>[] = [];
-  private previous = new Map<string, Connection>();
+  private previous: Map<string, Connection> = new Map<string, Connection>();
 
-  readonly connected = signal(false);
-  readonly uploadSpeed = signal(0);
-  readonly downloadSpeed = signal(0);
-  readonly uploadHistory = signal<number[]>([]);
-  readonly downloadHistory = signal<number[]>([]);
-  readonly uploadTotal = signal(0);
-  readonly downloadTotal = signal(0);
-  readonly memory = signal(0);
-  readonly connections = signal<Connection[]>([]);
-  readonly closedConnections = signal<Connection[]>([]);
-  readonly mode = signal('');
-  readonly modeList = signal<string[]>([]);
-  readonly activeCount = computed(() => this.connections().length);
+  readonly connected: WritableSignal<boolean> = signal(false);
+  readonly uploadSpeed: WritableSignal<number> = signal(0);
+  readonly downloadSpeed: WritableSignal<number> = signal(0);
+  readonly uploadHistory: WritableSignal<number[]> = signal<number[]>([]);
+  readonly downloadHistory: WritableSignal<number[]> = signal<number[]>([]);
+  readonly uploadTotal: WritableSignal<number> = signal(0);
+  readonly downloadTotal: WritableSignal<number> = signal(0);
+  readonly memory: WritableSignal<number> = signal(0);
+  readonly connections: WritableSignal<Connection[]> = signal<Connection[]>([]);
+  readonly closedConnections: WritableSignal<Connection[]> = signal<Connection[]>([]);
+  readonly mode: WritableSignal<string> = signal('');
+  readonly modeList: WritableSignal<string[]> = signal<string[]>([]);
+  readonly activeCount: Signal<number> = computed(() => this.connections().length);
 
   connect(endpoint: ClashEndpoint): void {
     this.disconnect();
@@ -99,8 +115,8 @@ export class ClashApiService {
     }
     this.sockets = [];
     // Move remaining connections to closed so they stay inspectable after stop.
-    const now = Date.now();
-    const remaining = this.connections().map((c) => ({ ...c, closedAt: now, uploadSpeed: 0, downloadSpeed: 0 }));
+    const now: number = Date.now();
+    const remaining: Connection[] = this.connections().map((c) => ({ ...c, closedAt: now, uploadSpeed: 0, downloadSpeed: 0 }));
     this.closedConnections.update((closed) => [...remaining, ...closed].slice(0, MAX_CLOSED_CONNECTIONS));
     this.previous.clear();
     this.connections.set([]);
@@ -120,7 +136,7 @@ export class ClashApiService {
   /** Resolves once the API answers, used to detect that sing-box finished starting. */
   async ping(endpoint: ClashEndpoint): Promise<boolean> {
     try {
-      const response = await fetch(`${endpoint.baseUrl}/version`, { headers: this.headers(endpoint) });
+      const response: Response = await fetch(`${endpoint.baseUrl}/version`, { headers: this.headers(endpoint) });
       return response.ok;
     } catch {
       return false;
@@ -128,7 +144,7 @@ export class ClashApiService {
   }
 
   async refreshMode(): Promise<void> {
-    const configs = await this.request<{ mode: string; 'mode-list'?: string[] }>('GET', '/configs');
+    const configs: ClashConfigs = await this.request<ClashConfigs>('GET', '/configs');
     this.mode.set(configs.mode);
     this.modeList.set(configs['mode-list'] ?? []);
   }
@@ -140,13 +156,13 @@ export class ClashApiService {
 
   /** Outbound groups, ordered as in `order` (the profile's outbound order). */
   async groups(order: string[] = []): Promise<OutboundGroup[]> {
-    const { proxies } = await this.request<{ proxies: Record<string, any> }>('GET', '/proxies');
-    const delayOf = (name: string): number | null => {
-      const history = proxies[name]?.history as { delay: number }[] | undefined;
-      const last = history?.[history.length - 1]?.delay;
+    const { proxies }: ClashProxies = await this.request<ClashProxies>('GET', '/proxies');
+    const delayOf: (name: string) => number | null = (name: string): number | null => {
+      const history: DelayHistory[] | undefined = proxies[name]?.history as DelayHistory[] | undefined;
+      const last: number | undefined = history?.[history.length - 1]?.delay;
       return last ? last : null;
     };
-    const groups = Object.values(proxies)
+    const groups: OutboundGroup[] = Object.values(proxies)
       .filter((p) => GROUP_TYPES.has(p.type) && (p.name !== 'GLOBAL' || this.mode().toLowerCase() === 'global'))
       .map(
         (p): OutboundGroup => ({
@@ -157,8 +173,8 @@ export class ClashApiService {
           items: (p.all as string[]).map((name) => ({ name, type: proxies[name]?.type ?? '', delay: delayOf(name) })),
         }),
       );
-    const rank = (name: string) => {
-      const index = order.indexOf(name);
+    const rank: (name: string) => number = (name: string) => {
+      const index: number = order.indexOf(name);
       return index < 0 ? Number.MAX_SAFE_INTEGER : index;
     };
     return groups.sort((a, b) => rank(a.name) - rank(b.name));
@@ -170,7 +186,7 @@ export class ClashApiService {
 
   /** Tests every member of a group; returns outbound name → delay in ms (0 = failed). */
   async testGroup(group: string, url = DEFAULT_TEST_URL, timeout = 5000): Promise<Record<string, number>> {
-    const query = `url=${encodeURIComponent(url)}&timeout=${timeout}`;
+    const query: string = `url=${encodeURIComponent(url)}&timeout=${timeout}`;
     return this.request('GET', `/group/${encodeURIComponent(group)}/delay?${query}`);
   }
 
@@ -183,16 +199,16 @@ export class ClashApiService {
   }
 
   private async request<T = unknown>(method: string, path: string, body?: unknown): Promise<T> {
-    const endpoint = this.endpoint;
+    const endpoint: ClashEndpoint | null = this.endpoint;
     if (!endpoint) throw new Error('Service is not running');
-    const response = await fetch(`${endpoint.baseUrl}${path}`, {
+    const response: Response = await fetch(`${endpoint.baseUrl}${path}`, {
       method,
       headers: { ...this.headers(endpoint), ...(body ? { 'Content-Type': 'application/json' } : {}) },
       body: body ? JSON.stringify(body) : undefined,
     });
     if (!response.ok) {
-      const text = await response.text();
-      let message = text;
+      const text: string = await response.text();
+      let message: string = text;
       try {
         message = JSON.parse(text).message ?? text;
       } catch {
@@ -200,7 +216,7 @@ export class ClashApiService {
       }
       throw new Error(message || `${response.status} ${response.statusText}`);
     }
-    const text = await response.text();
+    const text: string = await response.text();
     return (text ? JSON.parse(text) : undefined) as T;
   }
 
@@ -209,11 +225,11 @@ export class ClashApiService {
   }
 
   private openStream(path: string, onMessage: (data: any) => void): void {
-    const endpoint = this.endpoint;
+    const endpoint: ClashEndpoint | null = this.endpoint;
     if (!endpoint) return;
-    const url = new URL(endpoint.baseUrl.replace(/^http/, 'ws') + path);
+    const url: URL = new URL(endpoint.baseUrl.replace(/^http/, 'ws') + path);
     if (endpoint.secret) url.searchParams.set('token', endpoint.secret);
-    const socket = new WebSocket(url);
+    const socket: WebSocket = new WebSocket(url);
     socket.onmessage = (event) => {
       try {
         onMessage(JSON.parse(event.data));
@@ -237,16 +253,16 @@ export class ClashApiService {
   }): void {
     this.uploadTotal.set(data.uploadTotal);
     this.downloadTotal.set(data.downloadTotal);
-    const current = new Map<string, Connection>();
+    const current: Map<string, Connection> = new Map<string, Connection>();
     for (const raw of data.connections ?? []) {
-      const prev = this.previous.get(raw.id);
+      const prev: Connection | undefined = this.previous.get(raw.id);
       current.set(raw.id, {
         ...raw,
         uploadSpeed: prev ? Math.max(0, raw.upload - prev.upload) : 0,
         downloadSpeed: prev ? Math.max(0, raw.download - prev.download) : 0,
       });
     }
-    const now = Date.now();
+    const now: number = Date.now();
     const closed: Connection[] = [];
     for (const [id, prev] of this.previous) {
       if (!current.has(id)) closed.push({ ...prev, closedAt: now, uploadSpeed: 0, downloadSpeed: 0 });

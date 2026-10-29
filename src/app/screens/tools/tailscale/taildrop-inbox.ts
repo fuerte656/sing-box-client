@@ -1,5 +1,5 @@
 import { DatePipe, Location } from '@angular/common';
-import { Component, DestroyRef, computed, inject, input, signal } from '@angular/core';
+import { Component, DestroyRef, WritableSignal, Signal, InputSignal, computed, inject, input, signal } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatMenuModule } from '@angular/material/menu';
@@ -7,7 +7,7 @@ import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { os } from '@neutralinojs/lib';
 import { DaemonService } from '../../../core/daemon/daemon.service';
-import { TaildropService } from '../../../core/daemon/taildrop.service';
+import { SavedTaildropFile, TaildropService } from '../../../core/daemon/taildrop.service';
 import { CorePlatform } from '../../../core/platform/core-platform';
 import { SettingsService } from '../../../core/settings.service';
 import { TaildropFile, TaildropInbox, TaildropReceivingFile } from '../../../core/daemon/models';
@@ -140,23 +140,23 @@ import { BytesPipe } from '../../../shared/format';
   styleUrl: './tailscale.scss',
 })
 export class TaildropInboxScreen {
-  private readonly daemon = inject(DaemonService);
-  private readonly taildrop = inject(TaildropService);
-  private readonly platform = inject(CorePlatform);
-  private readonly settings = inject(SettingsService);
-  private readonly dialogs = inject(Dialogs);
-  private readonly location = inject(Location);
-  private readonly abort = new AbortController();
+  private readonly daemonService: DaemonService = inject(DaemonService);
+  private readonly taildropService: TaildropService = inject(TaildropService);
+  private readonly platform: CorePlatform = inject(CorePlatform);
+  private readonly settingsService: SettingsService = inject(SettingsService);
+  private readonly dialogs: Dialogs = inject(Dialogs);
+  private readonly location: Location = inject(Location);
+  private readonly abort: AbortController = new AbortController();
 
   /** Route parameter. */
-  readonly tag = input.required<string>();
+  readonly tag: InputSignal<string> = input.required<string>();
 
-  readonly inbox = signal<TaildropInbox | null>(null);
-  readonly saving = signal<string | null>(null);
-  readonly saveProgress = signal(0);
-  readonly autoSave = computed(() => this.settings.values().taildropAutoSave);
-  readonly folder = signal('');
-  readonly recent = computed(() => this.taildrop.recent().filter((f) => f.endpointTag === this.tag()));
+  readonly inbox: WritableSignal<TaildropInbox | null> = signal<TaildropInbox | null>(null);
+  readonly saving: WritableSignal<string | null> = signal<string | null>(null);
+  readonly saveProgress: WritableSignal<number> = signal(0);
+  readonly autoSave: Signal<boolean> = computed(() => this.settingsService.values().taildropAutoSave);
+  readonly folder: WritableSignal<string> = signal('');
+  readonly recent: Signal<SavedTaildropFile[]> = computed(() => this.taildropService.recent().filter((f) => f.endpointTag === this.tag()));
 
   constructor() {
     inject(DestroyRef).onDestroy(() => this.abort.abort());
@@ -164,7 +164,7 @@ export class TaildropInboxScreen {
 
   ngOnInit(): void {
     void this.subscribe();
-    void this.taildrop.folder().then((f) => this.folder.set(this.platform.nativePath(f)));
+    void this.taildropService.folder().then((f) => this.folder.set(this.platform.nativePath(f)));
   }
 
   back(): void {
@@ -176,12 +176,12 @@ export class TaildropInboxScreen {
   }
 
   async save(file: TaildropFile): Promise<void> {
-    const target = await os.showSaveDialog('Save received file', { defaultPath: file.name });
+    const target: string = await os.showSaveDialog('Save received file', { defaultPath: file.name });
     if (!target) return;
     this.saving.set(file.name);
     this.saveProgress.set(0);
     try {
-      await this.taildrop.save(this.tag(), file, target, (written, total) =>
+      await this.taildropService.save(this.tag(), file, target, (written, total) =>
         this.saveProgress.set(total ? (written / total) * 100 : 0),
       );
       this.saving.set(null);
@@ -196,16 +196,16 @@ export class TaildropInboxScreen {
   }
 
   clearRecent(): void {
-    this.taildrop.clearRecent(this.tag());
+    this.taildropService.clearRecent(this.tag());
   }
 
   savedPath(name: string): string | undefined {
-    return this.taildrop.savedPath(this.tag(), name);
+    return this.taildropService.savedPath(this.tag(), name);
   }
 
   async reveal(path: string): Promise<void> {
     try {
-      await this.taildrop.reveal(path);
+      await this.taildropService.reveal(path);
     } catch (e) {
       await this.dialogs.error('Could not open the folder', e);
     }
@@ -213,15 +213,15 @@ export class TaildropInboxScreen {
 
   async delete(file: TaildropFile): Promise<void> {
     try {
-      await this.daemon.deleteTaildropFile(this.tag(), file.name);
+      await this.daemonService.deleteTaildropFile(this.tag(), file.name);
     } catch (e) {
       await this.dialogs.error('Failed to delete file', e);
     }
   }
 
   async deleteAll(): Promise<void> {
-    const files = this.inbox()?.files ?? [];
-    const confirmed = await this.dialogs.confirm({
+    const files: TaildropFile[] = this.inbox()?.files ?? [];
+    const confirmed: boolean = await this.dialogs.confirm({
       title: 'Delete all files',
       message: `Delete ${files.length} received files?`,
       confirm: 'Delete all',
@@ -229,7 +229,7 @@ export class TaildropInboxScreen {
     });
     if (!confirmed) return;
     try {
-      for (const file of files) await this.daemon.deleteTaildropFile(this.tag(), file.name);
+      for (const file of files) await this.daemonService.deleteTaildropFile(this.tag(), file.name);
     } catch (e) {
       await this.dialogs.error('Failed to delete files', e);
     }
@@ -237,7 +237,7 @@ export class TaildropInboxScreen {
 
   async cancel(file: TaildropReceivingFile): Promise<void> {
     try {
-      await this.daemon.cancelTaildropReceiving(this.tag(), file.senderID, file.name);
+      await this.daemonService.cancelTaildropReceiving(this.tag(), file.senderID, file.name);
     } catch (e) {
       await this.dialogs.error('Failed to cancel', e);
     }
@@ -245,11 +245,11 @@ export class TaildropInboxScreen {
 
   /** Live inbox; opening the screen marks received files as read, as in SFA. */
   private async subscribe(): Promise<void> {
-    const signal = this.abort.signal;
-    void this.daemon.markTaildropInboxRead(this.tag()).catch(() => undefined);
+    const signal: AbortSignal = this.abort.signal;
+    void this.daemonService.markTaildropInboxRead(this.tag()).catch(() => undefined);
     while (!signal.aborted) {
       try {
-        await this.daemon.subscribeTaildropInbox(this.tag(), (inbox) => this.inbox.set(inbox), signal);
+        await this.daemonService.subscribeTaildropInbox(this.tag(), (inbox) => this.inbox.set(inbox), signal);
       } catch (e) {
         if (signal.aborted) return;
         this.inbox.update((current) => current ?? { endpointTag: this.tag(), files: [], receiving: [] });

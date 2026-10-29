@@ -32,5 +32,5 @@ export interface ConfirmDialogData {
   `,
 })
 export class ConfirmDialog {
-  readonly data = inject<ConfirmDialogData>(MAT_DIALOG_DATA);
+  readonly data: ConfirmDialogData = inject<ConfirmDialogData>(MAT_DIALOG_DATA);
 }

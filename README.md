@@ -146,7 +146,7 @@ src/app/core/
   platform/                 CorePlatform + factory: Windows, Linux, macOS (shared POSIX base)
   settings/base-settings.ts BaseSettings<T>: JSON file ⇄ webview storage replication
   settings.service.ts       AppSettings (extends BaseSettings)
-  box.service.ts            service lifecycle (start/stop/restart, overrides, alerts)
+  sing-box.service.ts       service lifecycle (start/stop/restart, overrides, alerts)
   clash-api.service.ts      Clash API REST + WebSocket streams
   core-binary.service.ts    core version, GitHub release download/install, `sing-box check`
   profile.service.ts        profiles CRUD, remote and auto update

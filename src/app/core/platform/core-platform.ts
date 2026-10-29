@@ -121,7 +121,7 @@ export abstract class CorePlatform {
 
   /** Maps Neutralino's computer.getArch() to Go's GOARCH naming used in release assets. */
   goArch(arch: string): string {
-    const value = arch.toLowerCase();
+    const value: string = arch.toLowerCase();
     if (value.includes('arm64') || value === 'aarch64') return 'arm64';
     if (value === 'arm' || value === 'armhf' || value.startsWith('armv7')) return 'armv7';
     if (value === 'ia32' || value === 'x86' || value === '386') return '386';

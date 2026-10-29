@@ -1,14 +1,14 @@
 <div class="page">
   <header class="page-header">
     <h1>Groups</h1>
-    @if (box.status() === 'started') {
+    @if (singBoxService.status() === 'started') {
       <button mat-icon-button (click)="reload()" [disabled]="loading()" matTooltip="Refresh">
         <mat-icon>refresh</mat-icon>
       </button>
     }
   </header>
 
-  @if (box.status() !== 'started') {
+  @if (singBoxService.status() !== 'started') {
     <div class="empty-state">
       <mat-icon>account_tree</mat-icon>
       <span>Start the service to manage outbound groups.</span>

@@ -1,11 +1,12 @@
-import { Component, computed, inject } from '@angular/core';
+import { Component, computed, inject, Signal } from '@angular/core';
 import { MatIconModule } from '@angular/material/icon';
 import { MatListModule } from '@angular/material/list';
 import { RouterLink } from '@angular/router';
-import { BoxService } from '../../core/box.service';
+import { SingBoxService } from '../../core/sing-box.service';
 import { CoreBinaryService } from '../../core/core-binary.service';
 import { DaemonService } from '../../core/daemon/daemon.service';
 import { stateLabel } from './tailscale/tailscale-utils';
+import { TailscaleEndpointStatus } from '../../core/daemon/models';
 
 @Component({
   selector: 'app-tools',
@@ -14,22 +15,22 @@ import { stateLabel } from './tailscale/tailscale-utils';
     <div class="page">
       <header class="page-header"><h1>Tools</h1></header>
 
-      @if (box.status() !== 'started') {
+      @if (singBoxService.status() !== 'started') {
         <div class="empty-state">
           <mat-icon>construction</mat-icon>
           <span>Start the service to use tools.</span>
         </div>
-      } @else if (!daemon.connected()) {
+      } @else if (!daemonService.connected()) {
         <div class="empty-state">
           <mat-icon>update</mat-icon>
-          <span>Tools need sing-box 1.14 or newer (installed: {{ core.version() }}). Update it in Settings → Core.</span>
+          <span>Tools need sing-box 1.14 or newer (installed: {{ coreBinaryService.version() }}). Update it in Settings → Core.</span>
         </div>
       } @else {
         <div class="content">
           <h2 class="section-title">Endpoints</h2>
-          @if (daemon.tailscale().length) {
+          @if (daemonService.tailscale().length) {
             <mat-nav-list class="group">
-              @for (endpoint of daemon.tailscale(); track endpoint.endpointTag) {
+              @for (endpoint of daemonService.tailscale(); track endpoint.endpointTag) {
                 <a mat-list-item [routerLink]="['/tools/tailscale', endpoint.endpointTag]">
                   <mat-icon matListItemIcon>hub</mat-icon>
                   <span matListItemTitle>Tailscale</span>
@@ -63,9 +64,9 @@ import { stateLabel } from './tailscale/tailscale-utils';
   `,
 })
 export class Tools {
-  readonly box = inject(BoxService);
-  readonly daemon = inject(DaemonService);
-  readonly core = inject(CoreBinaryService);
-  readonly multiple = computed(() => this.daemon.tailscale().length > 1);
-  readonly label = stateLabel;
+  readonly singBoxService: SingBoxService = inject(SingBoxService);
+  readonly daemonService: DaemonService = inject(DaemonService);
+  readonly coreBinaryService: CoreBinaryService = inject(CoreBinaryService);
+  readonly multiple: Signal<boolean> = computed(() => this.daemonService.tailscale().length > 1);
+  readonly label: (status: TailscaleEndpointStatus) => string = stateLabel;
 }

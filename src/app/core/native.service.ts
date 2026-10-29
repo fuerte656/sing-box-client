@@ -1,5 +1,5 @@
-import { Injectable } from '@angular/core';
-import { events, filesystem, os } from '@neutralinojs/lib';
+import { Service } from '@angular/core';
+import { DirectoryEntry, events, filesystem, os } from '@neutralinojs/lib';
 
 export interface ProcessEvent {
   id: number;
@@ -12,17 +12,17 @@ export interface ProcessEvent {
  * OS-neutral wrapper around the Neutralino native API plus the app's data-folder layout.
  * Platform-specific behaviour lives in CorePlatform.
  */
-@Injectable({ providedIn: 'root' })
+@Service()
 export class NativeService {
-  readonly available = typeof NL_PORT !== 'undefined';
+  readonly available: boolean = typeof NL_PORT !== 'undefined';
 
   private dataDirPromise?: Promise<string>;
 
   /** <OS data dir>/sing-box-client, using forward slashes. */
   dataDir(): Promise<string> {
     this.dataDirPromise ??= (async () => {
-      const base = (await os.getPath('data')).replace(/\\/g, '/');
-      const dir = `${base}/sing-box-client`;
+      const base: string = (await os.getPath('data')).replace(/\\/g, '/');
+      const dir: string = `${base}/sing-box-client`;
       await this.ensureDir(dir);
       return dir;
     })();
@@ -57,7 +57,7 @@ export class NativeService {
   }
 
   async readJson<T>(path: string): Promise<T | null> {
-    const text = await this.readText(path);
+    const text: string | null = await this.readText(path);
     if (text == null) return null;
     try {
       return JSON.parse(text) as T;
@@ -83,8 +83,8 @@ export class NativeService {
   /** Total size in bytes of a directory tree. */
   async size(path: string): Promise<number> {
     if (!(await this.exists(path))) return 0;
-    const entries = await filesystem.readDirectory(path, { recursive: true });
-    let total = 0;
+    const entries: DirectoryEntry[] = await filesystem.readDirectory(path, { recursive: true });
+    let total: number = 0;
     for (const entry of entries) {
       if (entry.type === 'FILE') {
         total += (await filesystem.getStats(entry.path)).size;

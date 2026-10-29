@@ -2,7 +2,13 @@ import { IConversionOptions, Method, Root, Service, Type } from 'protobufjs/ligh
 import definitions from './daemon.proto.json';
 
 /** gRPC status codes that the UI cares about. */
-export const GrpcStatus = {
+export const GrpcStatus: {
+  readonly OK: 0;
+  readonly CANCELLED: 1;
+  readonly UNIMPLEMENTED: 12;
+  readonly UNAVAILABLE: 14;
+  readonly UNAUTHENTICATED: 16;
+} = {
   OK: 0,
   CANCELLED: 1,
   UNIMPLEMENTED: 12,
@@ -19,7 +25,7 @@ export class GrpcWebError extends Error {
   }
 }
 
-const CRLF = String.fromCharCode(13, 10);
+const CRLF: string = String.fromCharCode(13, 10);
 const CONVERSION: IConversionOptions = { longs: Number, enums: String, defaults: true, arrays: true };
 
 let service: Service | undefined;
@@ -65,16 +71,16 @@ export class DaemonClient {
     onMessage: (message: T) => void,
     signal?: AbortSignal,
   ): Promise<void> {
-    const rpc = this.method(method);
-    const requestType = rpc.resolvedRequestType as Type;
-    const responseType = rpc.resolvedResponseType as Type;
+    const rpc: Method = this.method(method);
+    const requestType: Type = rpc.resolvedRequestType as Type;
+    const responseType: Type = rpc.resolvedResponseType as Type;
 
-    const payload = requestType.encode(requestType.fromObject(request)).finish();
-    const body = new Uint8Array(5 + payload.length);
+    const payload: Uint8Array<ArrayBufferLike> = requestType.encode(requestType.fromObject(request)).finish();
+    const body: Uint8Array<ArrayBuffer> = new Uint8Array(5 + payload.length);
     new DataView(body.buffer).setUint32(1, payload.length);
     body.set(payload, 5);
 
-    const response = await fetch(`${this.baseUrl}/daemon.StartedService/${method}`, {
+    const response: Response = await fetch(`${this.baseUrl}/daemon.StartedService/${method}`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/grpc-web+proto',
@@ -88,26 +94,26 @@ export class DaemonClient {
       throw new GrpcWebError(GrpcStatus.UNAVAILABLE, `${method}: HTTP ${response.status}`);
     }
     // "Trailers-only" responses carry the status in the headers.
-    const headerStatus = response.headers.get('grpc-status');
+    const headerStatus: string | null = response.headers.get('grpc-status');
     if (headerStatus && headerStatus !== '0') {
       throw new GrpcWebError(Number(headerStatus), decodeURIComponent(response.headers.get('grpc-message') ?? ''));
     }
 
-    const reader = response.body!.getReader();
+    const reader: ReadableStreamDefaultReader<Uint8Array<ArrayBuffer>> = response.body!.getReader();
     let buffer: Uint8Array = new Uint8Array(0);
     for (;;) {
-      const { value, done } = await reader.read();
+      const { value, done }: ReadableStreamReadResult<Uint8Array<ArrayBuffer>> = await reader.read();
       if (value) buffer = concat(buffer, value);
       // Each frame: 1 flag byte (0x80 = trailers), 4-byte big-endian length, payload.
       while (buffer.length >= 5) {
-        const length = new DataView(buffer.buffer, buffer.byteOffset).getUint32(1);
+        const length: number = new DataView(buffer.buffer, buffer.byteOffset).getUint32(1);
         if (buffer.length < 5 + length) break;
-        const flag = buffer[0];
-        const frame = buffer.subarray(5, 5 + length);
+        const flag: number = buffer[0];
+        const frame: Uint8Array<ArrayBufferLike> = buffer.subarray(5, 5 + length);
         buffer = buffer.subarray(5 + length);
         if (flag & 0x80) {
-          const trailers = parseTrailers(new TextDecoder().decode(frame));
-          const status = Number(trailers['grpc-status'] ?? 0);
+          const trailers: Record<string, string> = parseTrailers(new TextDecoder().decode(frame));
+          const status: number = Number(trailers['grpc-status'] ?? 0);
           if (status !== GrpcStatus.OK) {
             throw new GrpcWebError(status, decodeURIComponent(trailers['grpc-message'] ?? ''));
           }
@@ -125,29 +131,29 @@ export class DaemonClient {
    * to half-close. The server answers with gRPC-Web frames (0x80 = headers/trailers).
    */
   bidi<Req extends object, Res = Record<string, unknown>>(method: string, onMessage: (message: Res) => void): Promise<BidiStream<Req>> {
-    const rpc = this.method(method);
-    const requestType = rpc.resolvedRequestType as Type;
-    const responseType = rpc.resolvedResponseType as Type;
-    const ws = new WebSocket(`${this.baseUrl.replace(/^http/, 'ws')}/daemon.StartedService/${method}`, 'grpc-websockets');
+    const rpc: Method = this.method(method);
+    const requestType: Type = rpc.resolvedRequestType as Type;
+    const responseType: Type = rpc.resolvedResponseType as Type;
+    const ws: WebSocket = new WebSocket(`${this.baseUrl.replace(/^http/, 'ws')}/daemon.StartedService/${method}`, 'grpc-websockets');
     ws.binaryType = 'arraybuffer';
 
     let buffer: Uint8Array = new Uint8Array(0);
     let status: { code: number; message: string } | null = null;
-    let cancelled = false;
+    let cancelled: boolean = false;
     let settle!: { resolve: () => void; reject: (e: unknown) => void };
-    const done = new Promise<void>((resolve, reject) => (settle = { resolve, reject }));
+    const done: Promise<void> = new Promise<void>((resolve, reject) => (settle = { resolve, reject }));
     done.catch(() => undefined); // observed by the caller; avoid unhandled-rejection noise
 
     ws.onmessage = (event) => {
       buffer = concat(buffer, new Uint8Array(event.data as ArrayBuffer));
       while (buffer.length >= 5) {
-        const length = new DataView(buffer.buffer, buffer.byteOffset).getUint32(1);
+        const length: number = new DataView(buffer.buffer, buffer.byteOffset).getUint32(1);
         if (buffer.length < 5 + length) break;
-        const flag = buffer[0];
-        const frame = buffer.subarray(5, 5 + length);
+        const flag: number = buffer[0];
+        const frame: Uint8Array<ArrayBufferLike> = buffer.subarray(5, 5 + length);
         buffer = buffer.subarray(5 + length);
         if (flag & 0x80) {
-          const metadata = parseTrailers(new TextDecoder().decode(frame));
+          const metadata: Record<string, string> = parseTrailers(new TextDecoder().decode(frame));
           if (metadata['grpc-status'] !== undefined) {
             status = { code: Number(metadata['grpc-status']), message: decodeURIComponent(metadata['grpc-message'] ?? '') };
           }
@@ -163,8 +169,8 @@ export class DaemonClient {
       else settle.resolve();
     };
 
-    const frame = (prefix: number, payload: Uint8Array) => {
-      const message = new Uint8Array(6 + payload.length);
+    const frame: (prefix: number, payload: Uint8Array) => Uint8Array<ArrayBuffer> = (prefix: number, payload: Uint8Array) => {
+      const message: Uint8Array<ArrayBuffer> = new Uint8Array(6 + payload.length);
       message[0] = prefix;
       new DataView(message.buffer).setUint32(2, payload.length);
       message.set(payload, 6);
@@ -186,9 +192,9 @@ export class DaemonClient {
     return new Promise((resolve, reject) => {
       ws.onopen = () => {
         // MIME header block; the server appends the terminating empty line.
-        const lines = ['content-type: application/grpc-web+proto', 'x-grpc-web: 1'];
+        const lines: string[] = ['content-type: application/grpc-web+proto', 'x-grpc-web: 1'];
         if (this.secret) lines.push(`authorization: Bearer ${this.secret}`);
-        const headers = lines.map((line) => line + CRLF).join('');
+        const headers: string = lines.map((line) => line + CRLF).join('');
         ws.send(new TextEncoder().encode(headers));
         resolve(stream);
       };
@@ -197,7 +203,7 @@ export class DaemonClient {
   }
 
   private method(name: string): Method {
-    const rpc = startedService().methods[name];
+    const rpc: Method = startedService().methods[name];
     if (!rpc) throw new Error(`Unknown API method ${name}`);
     rpc.resolve();
     return rpc;
@@ -206,7 +212,7 @@ export class DaemonClient {
 
 function concat(a: Uint8Array, b: Uint8Array): Uint8Array {
   if (!a.length) return b;
-  const out = new Uint8Array(a.length + b.length);
+  const out: Uint8Array<ArrayBuffer> = new Uint8Array(a.length + b.length);
   out.set(a);
   out.set(b, a.length);
   return out;
@@ -215,7 +221,7 @@ function concat(a: Uint8Array, b: Uint8Array): Uint8Array {
 function parseTrailers(text: string): Record<string, string> {
   const result: Record<string, string> = {};
   for (const line of text.split('\r\n')) {
-    const index = line.indexOf(':');
+    const index: number = line.indexOf(':');
     if (index > 0) result[line.slice(0, index).trim().toLowerCase()] = line.slice(index + 1).trim();
   }
   return result;

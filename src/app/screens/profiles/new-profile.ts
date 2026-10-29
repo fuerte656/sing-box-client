@@ -1,5 +1,5 @@
 import { Location } from '@angular/common';
-import { Component, computed, inject, input, signal } from '@angular/core';
+import { Component, computed, inject, input, Signal, InputSignal, signal, WritableSignal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatButtonToggleModule } from '@angular/material/button-toggle';
@@ -10,7 +10,7 @@ import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { Router } from '@angular/router';
 import { os } from '@neutralinojs/lib';
-import { MIN_AUTO_UPDATE_INTERVAL, ProfileService, ProfileType } from '../../core/profile.service';
+import { MIN_AUTO_UPDATE_INTERVAL, Profile, ProfileService, ProfileType } from '../../core/profile.service';
 import { Dialogs } from '../../shared/dialogs';
 
 type LocalSource = 'create' | 'import';
@@ -31,27 +31,27 @@ type LocalSource = 'create' | 'import';
   styleUrl: './profile-form.scss',
 })
 export class NewProfile {
-  private readonly profiles = inject(ProfileService);
-  private readonly dialogs = inject(Dialogs);
-  private readonly router = inject(Router);
-  private readonly location = inject(Location);
+  private readonly profileService: ProfileService = inject(ProfileService);
+  private readonly dialogs: Dialogs = inject(Dialogs);
+  private readonly router: Router = inject(Router);
+  private readonly location: Location = inject(Location);
 
   /** Optional query parameters, used by "Import link from clipboard". */
-  readonly typeParam = input<string | undefined>(undefined, { alias: 'type' });
-  readonly urlParam = input<string | undefined>(undefined, { alias: 'url' });
-  readonly nameParam = input<string | undefined>(undefined, { alias: 'name' });
+  readonly typeParam: InputSignal<string | undefined> = input<string | undefined>(undefined, { alias: 'type' });
+  readonly urlParam: InputSignal<string | undefined> = input<string | undefined>(undefined, { alias: 'url' });
+  readonly nameParam: InputSignal<string | undefined> = input<string | undefined>(undefined, { alias: 'name' });
 
-  readonly minInterval = MIN_AUTO_UPDATE_INTERVAL;
-  readonly name = signal('');
-  readonly type = signal<ProfileType>('local');
-  readonly source = signal<LocalSource>('create');
-  readonly importPath = signal('');
-  readonly remoteUrl = signal('');
-  readonly autoUpdate = signal(true);
-  readonly autoUpdateInterval = signal(60);
-  readonly creating = signal(false);
+  readonly minInterval: number = MIN_AUTO_UPDATE_INTERVAL;
+  readonly name: WritableSignal<string> = signal('');
+  readonly type: WritableSignal<ProfileType> = signal<ProfileType>('local');
+  readonly source: WritableSignal<LocalSource> = signal<LocalSource>('create');
+  readonly importPath: WritableSignal<string> = signal('');
+  readonly remoteUrl: WritableSignal<string> = signal('');
+  readonly autoUpdate: WritableSignal<boolean> = signal(true);
+  readonly autoUpdateInterval: WritableSignal<number> = signal(60);
+  readonly creating: WritableSignal<boolean> = signal(false);
 
-  readonly valid = computed(() => {
+  readonly valid: Signal<boolean> = computed(() => {
     if (!this.name().trim()) return false;
     if (this.type() === 'remote') {
       return /^https?:\/\/\S+$/i.test(this.remoteUrl().trim()) && this.autoUpdateInterval() >= this.minInterval;
@@ -66,7 +66,7 @@ export class NewProfile {
   }
 
   async browse(): Promise<void> {
-    const [file] = await os.showOpenDialog('Select configuration', {
+    const [file]: string[] = await os.showOpenDialog('Select configuration', {
       filters: [{ name: 'sing-box configuration', extensions: ['json', 'jsonc'] }],
     });
     if (!file) return;
@@ -80,8 +80,8 @@ export class NewProfile {
     if (!this.valid()) return;
     this.creating.set(true);
     try {
-      const remote = this.type() === 'remote';
-      const profile = await this.profiles.create({
+      const remote: boolean = this.type() === 'remote';
+      const profile: Profile = await this.profileService.create({
         name: this.name(),
         type: this.type(),
         importPath: !remote && this.source() === 'import' ? this.importPath() : undefined,

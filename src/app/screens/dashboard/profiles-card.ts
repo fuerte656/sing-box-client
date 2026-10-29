@@ -1,5 +1,5 @@
 import { DatePipe } from '@angular/common';
-import { Component, inject, signal } from '@angular/core';
+import { Component, inject, signal, WritableSignal } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
 import { MatIconModule } from '@angular/material/icon';
@@ -9,8 +9,8 @@ import { MatRadioModule } from '@angular/material/radio';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { Router, RouterLink } from '@angular/router';
 import { clipboard, os } from '@neutralinojs/lib';
-import { BoxService } from '../../core/box.service';
-import { Profile, ProfileService, parseImportLink } from '../../core/profile.service';
+import { SingBoxService } from '../../core/sing-box.service';
+import { ImportLink, Profile, ProfileService, parseImportLink } from '../../core/profile.service';
 import { Dialogs } from '../../shared/dialogs';
 
 @Component({
@@ -30,24 +30,24 @@ import { Dialogs } from '../../shared/dialogs';
   styleUrl: './profiles-card.scss',
 })
 export class ProfilesCard {
-  private readonly box = inject(BoxService);
-  private readonly dialogs = inject(Dialogs);
-  private readonly router = inject(Router);
-  readonly profileService = inject(ProfileService);
+  private readonly singBoxService: SingBoxService = inject(SingBoxService);
+  private readonly dialogs: Dialogs = inject(Dialogs);
+  private readonly router: Router = inject(Router);
+  readonly profileService: ProfileService = inject(ProfileService);
 
-  readonly updating = signal<number | null>(null);
+  readonly updating: WritableSignal<number | null> = signal<number | null>(null);
 
   async select(profile: Profile): Promise<void> {
     if (profile.id === this.profileService.selectedId()) return;
     await this.profileService.select(profile.id);
     // Like SFA: switching profiles while running applies the new one immediately.
-    if (this.box.status() === 'started') await this.box.restart();
+    if (this.singBoxService.status() === 'started') await this.singBoxService.restart();
   }
 
   async update(profile: Profile): Promise<void> {
     this.updating.set(profile.id);
     try {
-      const changed = await this.profileService.updateRemote(profile.id);
+      const changed: boolean = await this.profileService.updateRemote(profile.id);
       this.dialogs.toast(changed ? `Updated "${profile.name}"` : `"${profile.name}" is up to date`);
     } catch (e) {
       await this.dialogs.error('Update failed', e);
@@ -57,7 +57,7 @@ export class ProfilesCard {
   }
 
   async export(profile: Profile): Promise<void> {
-    const target = await os.showSaveDialog('Save configuration', {
+    const target: string = await os.showSaveDialog('Save configuration', {
       defaultPath: `${profile.name}.json`,
       filters: [{ name: 'JSON', extensions: ['json'] }],
     });
@@ -72,30 +72,30 @@ export class ProfilesCard {
 
   async copyImportLink(profile: Profile): Promise<void> {
     if (!profile.remoteUrl) return;
-    const link = `sing-box://import-remote-profile?url=${encodeURIComponent(profile.remoteUrl)}#${encodeURIComponent(profile.name)}`;
+    const link: string = `sing-box://import-remote-profile?url=${encodeURIComponent(profile.remoteUrl)}#${encodeURIComponent(profile.name)}`;
     await clipboard.writeText(link);
     this.dialogs.toast('Import link copied to clipboard');
   }
 
   async delete(profile: Profile): Promise<void> {
-    const confirmed = await this.dialogs.confirm({
+    const confirmed: boolean = await this.dialogs.confirm({
       title: 'Delete profile',
       message: `Delete "${profile.name}"? This cannot be undone.`,
       confirm: 'Delete',
       destructive: true,
     });
     if (!confirmed) return;
-    const wasSelected = profile.id === this.profileService.selectedId();
+    const wasSelected: boolean = profile.id === this.profileService.selectedId();
     await this.profileService.delete(profile.id);
-    if (wasSelected && this.box.status() !== 'stopped') await this.box.stop();
+    if (wasSelected && this.singBoxService.status() !== 'stopped') await this.singBoxService.stop();
   }
 
   async importFile(): Promise<void> {
-    const [file] = await os.showOpenDialog('Import configuration', {
+    const [file]: string[] = await os.showOpenDialog('Import configuration', {
       filters: [{ name: 'sing-box configuration', extensions: ['json', 'jsonc'] }],
     });
     if (!file) return;
-    const name = file.replace(/\\/g, '/').split('/').pop()!.replace(/\.jsonc?$/i, '');
+    const name: string = file.replace(/\\/g, '/').split('/').pop()!.replace(/\.jsonc?$/i, '');
     try {
       await this.profileService.create({ name, type: 'local', importPath: file });
       this.dialogs.toast(`Imported "${name}"`);
@@ -105,8 +105,8 @@ export class ProfilesCard {
   }
 
   async importLink(): Promise<void> {
-    const text = await clipboard.readText().catch(() => '');
-    const link = parseImportLink(text);
+    const text: string = await clipboard.readText().catch(() => '');
+    const link: ImportLink | null = parseImportLink(text);
     if (!link) {
       await this.dialogs.error(
         'No import link',

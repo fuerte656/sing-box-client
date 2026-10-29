@@ -1,7 +1,7 @@
 <div class="page">
   <header class="page-header">
     <h1>Dashboard</h1>
-    @if (profiles.selected(); as profile) {
+    @if (profileService.selected(); as profile) {
       <span class="muted">{{ profile.name }}</span>
     }
   </header>
@@ -12,9 +12,9 @@
         <mat-card appearance="outlined">
           <mat-card-content>
             <div class="stat-label"><mat-icon>arrow_upward</mat-icon> Upload</div>
-            <div class="stat-value">{{ clash.uploadSpeed() | speed }}</div>
-            <div class="stat-sub muted">Total {{ clash.uploadTotal() | bytes }}</div>
-            <app-sparkline [values]="clash.uploadHistory()" />
+            <div class="stat-value">{{ clashApiService.uploadSpeed() | speed }}</div>
+            <div class="stat-sub muted">Total {{ clashApiService.uploadTotal() | bytes }}</div>
+            <app-sparkline [values]="clashApiService.uploadHistory()" />
           </mat-card-content>
         </mat-card>
       }
@@ -22,9 +22,9 @@
         <mat-card appearance="outlined">
           <mat-card-content>
             <div class="stat-label"><mat-icon>arrow_downward</mat-icon> Download</div>
-            <div class="stat-value">{{ clash.downloadSpeed() | speed }}</div>
-            <div class="stat-sub muted">Total {{ clash.downloadTotal() | bytes }}</div>
-            <app-sparkline [values]="clash.downloadHistory()" />
+            <div class="stat-value">{{ clashApiService.downloadSpeed() | speed }}</div>
+            <div class="stat-sub muted">Total {{ clashApiService.downloadTotal() | bytes }}</div>
+            <app-sparkline [values]="clashApiService.downloadHistory()" />
           </mat-card-content>
         </mat-card>
       }
@@ -32,33 +32,33 @@
         <mat-card appearance="outlined" class="clickable" routerLink="/connections">
           <mat-card-content>
             <div class="stat-label"><mat-icon>swap_vert</mat-icon> Connections</div>
-            <div class="stat-value">{{ clash.activeCount() }}</div>
-            <div class="stat-sub muted">Memory {{ clash.memory() | bytes }}</div>
+            <div class="stat-value">{{ clashApiService.activeCount() }}</div>
+            <div class="stat-sub muted">Memory {{ clashApiService.memory() | bytes }}</div>
           </mat-card-content>
         </mat-card>
       }
-      @if (cards().has('clashMode') && clash.modeList().length > 1) {
+      @if (cards().has('clashMode') && clashApiService.modeList().length > 1) {
         <mat-card appearance="outlined">
           <mat-card-content>
             <div class="stat-label"><mat-icon>alt_route</mat-icon> Mode</div>
             <mat-button-toggle-group
               class="modes"
-              [value]="clash.mode()"
+              [value]="clashApiService.mode()"
               (change)="setMode($event.value)"
               hideSingleSelectionIndicator
             >
-              @for (mode of clash.modeList(); track mode) {
+              @for (mode of clashApiService.modeList(); track mode) {
                 <mat-button-toggle [value]="mode">{{ mode }}</mat-button-toggle>
               }
             </mat-button-toggle-group>
           </mat-card-content>
         </mat-card>
       }
-      @if (cards().has('systemProxy') && box.systemProxy().available) {
+      @if (cards().has('systemProxy') && singBoxService.systemProxy().available) {
         <mat-card appearance="outlined">
           <mat-card-content class="toggle-card">
             <div class="stat-label"><mat-icon>language</mat-icon> System HTTP proxy</div>
-            <mat-slide-toggle [checked]="box.systemProxy().enabled" (change)="setSystemProxy($event.checked)" />
+            <mat-slide-toggle [checked]="singBoxService.systemProxy().enabled" (change)="setSystemProxy($event.checked)" />
           </mat-card-content>
         </mat-card>
       }
@@ -77,13 +77,13 @@
     class="fab"
     [class.running]="running()"
     [disabled]="busy()"
-    (click)="box.toggle()"
+    (click)="singBoxService.toggle()"
   >
     @if (busy()) {
       <mat-spinner diameter="20" />
     } @else {
       <mat-icon>{{ running() ? 'stop' : 'play_arrow' }}</mat-icon>
     }
-    {{ running() ? 'Stop' : box.status() === 'starting' ? 'Starting' : box.status() === 'stopping' ? 'Stopping' : 'Start' }}
+    {{ running() ? 'Stop' : singBoxService.status() === 'starting' ? 'Starting' : singBoxService.status() === 'stopping' ? 'Stopping' : 'Start' }}
   </button>
 </div>
