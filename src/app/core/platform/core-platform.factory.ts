@@ -1,8 +1,8 @@
 import { Provider } from '@angular/core';
 import { CorePlatform } from './core-platform';
-import { LinuxCorePlatform } from './linux-core-platform';
-import { MacosCorePlatform } from './macos-core-platform';
-import { WindowsCorePlatform } from './windows-core-platform';
+import { LinuxCorePlatform } from './linux/linux-core-platform';
+import { MacosCorePlatform } from './macos/macos-core-platform';
+import { WindowsCorePlatform } from './windows/windows-core-platform';
 
 /** Picks the {@link CorePlatform} implementation for a Neutralino NL_OS value. */
 export function createCorePlatform(nlOs: string): CorePlatform {

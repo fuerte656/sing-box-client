@@ -1,9 +1,20 @@
-import { os } from '@neutralinojs/lib';
-import { cyrillicToLatin, normalizeText } from '../../shared/text-utils';
-import { CorePlatform, ExecResult, TunPrivilegeResult } from './core-platform';
+import { events, os } from '@neutralinojs/lib';
+import { cyrillicToLatin, normalizeText } from '../../../shared/text-utils';
+import { CorePlatform, ExecResult, TunPrivilegeResult } from '../core-platform';
 import INTERRUPT_SCRIPT from './scripts/interrupt.ps1';
 import CONSOLE_SOURCE from './scripts/SingBoxClientConsole.cs';
 import WATCH_APP_SCRIPT from './scripts/watch-app.ps1';
+
+/** interrupt.ps1 started ahead of a stop (see WindowsCorePlatform.prepareStop). */
+interface Standby {
+  /** sing-box PID it was started for. */
+  pid: number;
+  /** Neutralino's id of the spawned process. */
+  id: number;
+  exited: boolean;
+  /** The script's exit code. */
+  exit: Promise<number>;
+}
 
 /** PowerShell single-quoted (literal) string. */
 const psQuote = (s: string) => `'${s.replace(/'/g, "''")}'`;
@@ -38,6 +49,10 @@ export class WindowsCorePlatform extends CorePlatform {
   readonly tunPrivilegeAction = 'Restart as administrator';
   readonly tunPrivilegeHint =
     'This profile uses a TUN inbound, which requires running the client as administrator.';
+
+  private standby: Standby | null = null;
+  private readonly standbyExits = new Map<number, (code: number) => void>();
+  private listeningToStandby = false;
 
   releaseAssetName(version: string, arch: string): string {
     return `sing-box-${version}-windows-${this.goArch(arch)}.zip`;
@@ -95,7 +110,47 @@ export class WindowsCorePlatform extends CorePlatform {
     return `start "sing-box" /B /WAIT ${commandLine}`;
   }
 
+  /**
+   * Starts interrupt.ps1 in standby: PowerShell startup and compiling the C# helper take about
+   * 2 s, which would otherwise come before every stop.
+   */
+  override async prepareStop(pid: number, timeoutMs: number): Promise<void> {
+    await this.cancelPreparedStop();
+    const command = this.powershellCommand(
+      INTERRUPT_SCRIPT,
+      `-TargetPid ${pid} -TimeoutMs ${timeoutMs} -ConsoleSource ${psQuote(CONSOLE_SOURCE_MIN)} -Standby`,
+    );
+    this.listenToStandby();
+    const proc = await os.spawnProcess(command);
+    const standby: Standby = { pid, id: proc.id, exited: false, exit: Promise.resolve(-1) };
+    standby.exit = new Promise<number>((resolve) =>
+      this.standbyExits.set(proc.id, (code) => {
+        standby.exited = true;
+        resolve(code);
+      }),
+    );
+    this.standby = standby;
+  }
+
+  override async cancelPreparedStop(): Promise<void> {
+    const standby = this.standby;
+    this.standby = null;
+    // Closing stdin makes the script exit (code 5).
+    if (standby && !standby.exited) await os.updateSpawnedProcess(standby.id, 'stdInEnd').catch(() => undefined);
+  }
+
   async stopGracefully(pid: number, timeoutMs: number): Promise<boolean> {
+    const standby = this.standby;
+    this.standby = null;
+    if (standby?.pid === pid && !standby.exited) {
+      try {
+        await os.updateSpawnedProcess(standby.id, 'stdIn', 'stop\n');
+        const timeout = new Promise<number>((resolve) => setTimeout(() => resolve(-1), timeoutMs + 3000));
+        return (await Promise.race([standby.exit, timeout])) === 0;
+      } catch {
+        // Gone in the meantime: start the script now instead.
+      }
+    }
     const result = await this.powershell(
       INTERRUPT_SCRIPT,
       `-TargetPid ${pid} -TimeoutMs ${timeoutMs} -ConsoleSource ${psQuote(CONSOLE_SOURCE_MIN)}`,
@@ -198,13 +253,30 @@ export class WindowsCorePlatform extends CorePlatform {
   }
 
   /** Runs a script via -EncodedCommand (UTF-16LE base64) so no quoting or temp files are needed. */
-  private powershell(script: string, args = '', background = false): Promise<ExecResult> {
+  private async powershell(script: string, args = '', background = false): Promise<ExecResult> {
+    return this.exec(this.powershellCommand(script, args), background);
+  }
+
+  private powershellCommand(script: string, args = ''): string {
     const body = args ? `& {${script}} ${args}` : script;
     const command = `powershell -NoProfile -NonInteractive -ExecutionPolicy Bypass -EncodedCommand ${encodeCommand(body)}`;
     // Past the limit cmd.exe fails without running anything, which looks like the script did nothing.
     if (command.length > MAX_COMMAND_LENGTH) {
-      return Promise.reject(new Error(`PowerShell command too long (${command.length} > ${MAX_COMMAND_LENGTH})`));
+      throw new Error(`PowerShell command too long (${command.length} > ${MAX_COMMAND_LENGTH})`);
     }
-    return this.exec(command, background);
+    return command;
+  }
+
+  /** Records the standby script's exit code; subscribed once. */
+  private listenToStandby(): void {
+    if (this.listeningToStandby) return;
+    this.listeningToStandby = true;
+    void events.on('spawnedProcess', (ev) => {
+      const { id, action, data } = (ev as CustomEvent<{ id: number; action: string; data: unknown }>).detail;
+      const onExit = this.standbyExits.get(id);
+      if (!onExit || action !== 'exit') return;
+      this.standbyExits.delete(id);
+      onExit(Number(data));
+    });
   }
 }

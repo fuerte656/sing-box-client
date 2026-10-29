@@ -184,6 +184,7 @@ export class BoxService {
       }
       this.corePid = await this.platform.resolveCorePid(this.process!.pid);
       void this.instance.setCorePid(this.corePid).catch(() => undefined);
+      void this.platform.prepareStop(this.corePid, STOP_TIMEOUT).catch(() => undefined);
       this.clash.connect(endpoint);
       if (daemonEndpoint) this.daemon.connect(daemonEndpoint);
       this.status.set('started');
@@ -280,6 +281,7 @@ export class BoxService {
   async kill(): Promise<void> {
     const proc = this.process;
     if (!proc) return;
+    void this.platform.cancelPreparedStop().catch(() => undefined);
     await this.platform.forceKill(this.corePid ?? proc.pid).catch(() => undefined);
     await this.platform.forceKill(proc.pid).catch(() => undefined);
   }
@@ -291,8 +293,9 @@ export class BoxService {
     const corePid = this.corePid ?? (await this.platform.resolveCorePid(proc.pid).catch(() => proc.pid));
     const exited = this.waitForExit(STOP_TIMEOUT + 2000);
     void this.instance.logEvent(`stop: sing-box ${corePid} (shell ${proc.pid})`);
+    const startedAt = Date.now();
     const stopped = await this.platform.stopGracefully(corePid, STOP_TIMEOUT).catch(() => false);
-    void this.instance.logEvent(`stop: graceful ${stopped ? 'ok' : 'failed'}`);
+    void this.instance.logEvent(`stop: graceful ${stopped ? 'ok' : 'failed'} in ${Date.now() - startedAt} ms`);
     if (!stopped) {
       this.logs.system('sing-box did not stop gracefully, killing it', 'warn');
       await this.platform.forceKill(corePid).catch(() => undefined);
@@ -341,6 +344,7 @@ export class BoxService {
         this.process = null;
         this.corePid = null;
         void this.instance.setCorePid(null).catch(() => undefined);
+        void this.platform.cancelPreparedStop().catch(() => undefined);
         const waiters = this.exitWaiters;
         this.exitWaiters = [];
         waiters.forEach((w) => w());

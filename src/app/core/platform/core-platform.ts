@@ -63,6 +63,12 @@ export abstract class CorePlatform {
    */
   abstract stopGracefully(pid: number, timeoutMs: number): Promise<boolean>;
 
+  /** Readies a later stopGracefully(pid, timeoutMs) in advance, where that is slow to start; no-op by default. */
+  async prepareStop(_pid: number, _timeoutMs: number): Promise<void> {}
+
+  /** Drops what prepareStop readied, once sing-box exited on its own. */
+  async cancelPreparedStop(): Promise<void> {}
+
   /** Terminates the process and its children. */
   abstract forceKill(pid: number): Promise<void>;
 

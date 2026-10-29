@@ -1,5 +1,5 @@
-import { PlatformId, TunPrivilegeResult } from './core-platform';
-import { PosixCorePlatform } from './posix-core-platform';
+import { PlatformId, TunPrivilegeResult } from '../core-platform';
+import { PosixCorePlatform } from '../posix-core-platform';
 
 /** Capabilities sing-box needs for a TUN inbound with auto_route (see sing-box docs, Linux). */
 const TUN_CAPABILITIES = 'cap_net_admin,cap_net_raw,cap_net_bind_service+ep';
