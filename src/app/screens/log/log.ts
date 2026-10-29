@@ -10,7 +10,7 @@ import { MatSelectModule } from '@angular/material/select';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { clipboard, os } from '@neutralinojs/lib';
 import { SingBoxService } from '../../core/sing-box.service';
-import { LOG_LEVELS, LogEntry, LogLevel, LogService } from '../../core/log.service';
+import { LOG_LEVELS, LogEntry, LogLevel, LogService, formatLogTime } from '../../core/log.service';
 import { NativeService } from '../../core/native.service';
 import { Dialogs } from '../../shared/dialogs';
 
@@ -57,6 +57,7 @@ export class Log {
   private readonly viewport: Signal<CdkVirtualScrollViewport | undefined> = viewChild(CdkVirtualScrollViewport);
   /** Line height in px (log.scss .line), for the virtual scroll viewport. */
   readonly lineHeight: number = 56;
+  readonly formatTime: (time: number) => string = formatLogTime;
   readonly trackById: (_: number, e: LogEntry) => number = (_: number, e: LogEntry) => e.id;
 
   readonly visible: Signal<LogEntry[]> = computed(() => {
@@ -131,7 +132,7 @@ export class Log {
 
   private asText(): string {
     return this.visible()
-      .map((e) => `${e.level.toUpperCase()} ${e.message}`)
+      .map((e) => `${formatLogTime(e.time)} ${e.level.toUpperCase()} ${e.message}`)
       .join('\n');
   }
 }

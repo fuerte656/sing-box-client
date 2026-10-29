@@ -50,6 +50,11 @@
   overflow-wrap: anywhere;
 }
 
+.time {
+  flex: 0 0 auto;
+  color: var(--mat-sys-on-surface-variant);
+}
+
 .lvl {
   flex: 0 0 44px;
   color: var(--mat-sys-on-surface-variant);

@@ -7,8 +7,16 @@ export const LOG_LEVELS: LogLevel[] = ['trace', 'debug', 'info', 'warn', 'error'
 
 export interface LogEntry {
   id: number;
+  /** When the line arrived (ms since epoch); sing-box's own timestamps are off on the console. */
+  time: number;
   level: LogLevel;
   message: string;
+}
+
+/** Local date and time of an entry, as `2026-10-30 14:03:22`. */
+export function formatLogTime(time: number): string {
+  const local: Date = new Date(time - new Date(time).getTimezoneOffset() * 60_000);
+  return local.toISOString().slice(0, 19).replace('T', ' ');
 }
 
 const LEVEL_PREFIX: RegExp = /^(TRACE|DEBUG|INFO|WARN|ERROR|FATAL|PANIC)(\[\d+\])?\s*/;
@@ -39,7 +47,7 @@ export class LogService {
 
   /** Adds a line produced by the client itself rather than sing-box. */
   system(message: string, level: LogLevel = 'info'): void {
-    this.add([{ id: this.nextId++, level, message }]);
+    this.add([{ id: this.nextId++, time: Date.now(), level, message }]);
   }
 
   clear(): void {
@@ -57,15 +65,16 @@ export class LogService {
 
   private push(lines: string[]): void {
     const parsed: LogEntry[] = [];
+    const time: number = Date.now();
     for (const line of lines) {
       if (!line.trim()) continue;
       const match: RegExpExecArray | null = LEVEL_PREFIX.exec(line);
       if (match) {
-        parsed.push({ id: this.nextId++, level: match[1].toLowerCase() as LogLevel, message: line.slice(match[0].length) });
+        parsed.push({ id: this.nextId++, time, level: match[1].toLowerCase() as LogLevel, message: line.slice(match[0].length) });
       } else {
         // Continuation lines (stack traces, multi-line errors) inherit the previous level.
         const level: LogLevel = parsed[parsed.length - 1]?.level ?? this.entries()[this.entries().length - 1]?.level ?? 'info';
-        parsed.push({ id: this.nextId++, level, message: line });
+        parsed.push({ id: this.nextId++, time, level, message: line });
       }
     }
     this.add(parsed);

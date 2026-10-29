@@ -99,6 +99,14 @@ export abstract class CorePlatform {
   /** Opens the file manager at a file's folder, with the file selected where the OS supports it. */
   abstract revealFile(path: string): Promise<void>;
 
+  /**
+   * Name and version of the webview engine where the OS can tell more than the user agent
+   * (e.g. "WebKitGTK 2.48.3"); null to rely on the user agent and client hints.
+   */
+  async webviewEngine(): Promise<string | null> {
+    return null;
+  }
+
   /** Opens a folder in the file manager. */
   abstract openFolder(path: string): Promise<void>;
 

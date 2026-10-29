@@ -47,6 +47,7 @@
         [attr.data-level]="entry.level"
         [title]="entry.message"
       >
+        <span class="time">{{ formatTime(entry.time) }}</span>
         <span class="lvl">{{ entry.level.toUpperCase() }}</span>
         <span class="msg">{{ entry.message }}</span>
       </div>

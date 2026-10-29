@@ -64,7 +64,7 @@ export class Settings {
   readonly cardLabels: Record<DashboardCard, string> = CARD_LABELS;
   readonly appVersion: string = typeof NL_APPVERSION === 'undefined' ? 'dev' : NL_APPVERSION;
   readonly neutralinoVersion: string = typeof NL_VERSION === 'undefined' ? '-' : NL_VERSION;
-  /** Webview engine the UI runs in, e.g. Microsoft Edge WebView2 156.0.4314.50. */
+  /** Webview engine the UI runs in, e.g. Microsoft Edge WebView2 156.0.4314.50 (Chromium 156.0.8078.49). */
   readonly browserEngine: WritableSignal<string> = signal('');
 
   readonly latest: WritableSignal<LatestRelease | null> = signal<LatestRelease | null>(null);
@@ -88,7 +88,7 @@ export class Settings {
   });
 
   constructor() {
-    void browserEngine().then((engine) => this.browserEngine.set(engine));
+    void browserEngine(this.platform).then((engine) => this.browserEngine.set(engine));
     if (this.nativeService.available) {
       void this.nativeService.dataDir().then((dir) => this.dataDir.set(this.platform.nativePath(dir)));
       void this.refreshWorkDirSize();

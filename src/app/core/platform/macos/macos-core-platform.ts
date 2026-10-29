@@ -1,5 +1,6 @@
 import { ExecResult, PlatformId, TunPrivilegeResult } from '../core-platform';
 import { PosixCorePlatform } from '../posix/posix-core-platform';
+import WEBKIT_VERSION_SCRIPT from './scripts/webkit-version.sh';
 
 export class MacosCorePlatform extends PosixCorePlatform {
   readonly id: PlatformId = 'macos';
@@ -26,6 +27,12 @@ export class MacosCorePlatform extends PosixCorePlatform {
   async revealFile(path: string): Promise<void> {
     const result: ExecResult = await this.exec(`open -R ${this.quote(path)}`);
     if (result.exitCode !== 0) throw new Error(result.stdErr.trim() || 'Failed to reveal file in Finder');
+  }
+
+  override async webviewEngine(): Promise<string | null> {
+    const result: ExecResult = await this.exec(`sh -c ${this.quote(WEBKIT_VERSION_SCRIPT)} webkit-version`);
+    const version: string = result.stdOut.trim();
+    return result.exitCode === 0 && version ? `WebKit ${version}` : null;
   }
 
   async openFolder(path: string): Promise<void> {

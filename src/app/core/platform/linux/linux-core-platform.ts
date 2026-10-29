@@ -1,6 +1,7 @@
 import { ExecResult, PlatformId, TunPrivilegeResult } from '../core-platform';
 import { PosixCorePlatform } from '../posix/posix-core-platform';
 import { launchTerminal } from './linux-terminals';
+import WEBKIT_VERSION_SCRIPT from './scripts/webkit-version.sh';
 
 /** Capabilities sing-box needs for a TUN inbound with auto_route (see sing-box docs, Linux). */
 const TUN_CAPABILITIES: string = 'cap_net_admin,cap_net_raw,cap_net_bind_service+ep';
@@ -40,6 +41,12 @@ export class LinuxCorePlatform extends PosixCorePlatform {
     );
     if (select.exitCode === 0) return;
     await this.openFolder(path.slice(0, path.lastIndexOf('/')) || '/');
+  }
+
+  override async webviewEngine(): Promise<string | null> {
+    const result: ExecResult = await this.exec(`sh -c ${this.quote(WEBKIT_VERSION_SCRIPT)} webkit-version ${NL_PID}`);
+    const version: string = result.stdOut.trim();
+    return result.exitCode === 0 && version ? `WebKitGTK ${version}` : null;
   }
 
   async openFolder(path: string): Promise<void> {
