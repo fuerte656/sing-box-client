@@ -272,6 +272,9 @@
             <span class="row-sub muted">
               Version {{ appVersion }} · Neutralinojs {{ neutralinoVersion }} · {{ platform.id }}
             </span>
+            @if (browserEngine()) {
+              <span class="row-sub muted">{{ browserEngine() }}</span>
+            }
           </div>
         </div>
       </mat-card-content>
