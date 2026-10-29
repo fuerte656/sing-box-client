@@ -25,7 +25,8 @@
             "inlineStyleLanguage": "scss",
             "loader": {
               ".ps1": "text",
-              ".cs": "text"
+              ".cs": "text",
+              ".sh": "text"
             },
             "assets": [
               {

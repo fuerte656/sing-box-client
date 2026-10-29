@@ -1,5 +1,5 @@
 import { PlatformId, TunPrivilegeResult } from '../core-platform';
-import { PosixCorePlatform } from '../posix-core-platform';
+import { PosixCorePlatform } from '../posix/posix-core-platform';
 
 export class MacosCorePlatform extends PosixCorePlatform {
   readonly id: PlatformId = 'macos';

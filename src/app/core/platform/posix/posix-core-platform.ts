@@ -1,5 +1,6 @@
 import { os } from '@neutralinojs/lib';
-import { CorePlatform, ExecResult } from './core-platform';
+import { CorePlatform, ExecResult } from '../core-platform';
+import WATCH_APP_SCRIPT from './scripts/watch-app.sh';
 
 /** Behaviour shared by Linux and macOS: POSIX shell, signals, ps/pgrep, tar.gz releases. */
 export abstract class PosixCorePlatform extends CorePlatform {
@@ -65,18 +66,9 @@ export abstract class PosixCorePlatform extends CorePlatform {
   }
 
   async watchApp(appPid: number, _appPort: number | undefined, lockPath: string): Promise<void> {
-    // Polls the app, keeping sing-box's PID from the lock while the lock is this app's; once the
-    // app is gone: SIGINT, up to 5 s to exit, then SIGKILL. (No UI check: the lost-UI case is Windows-only.)
-    const field = (name: string) => `sed -n 's/.*"${name}": *\\([0-9]*\\).*/\\1/p' ${this.quote(lockPath)} 2>/dev/null`;
-    await os.execCommand(
-      `core=; while kill -0 ${appPid} 2>/dev/null; do ` +
-        `[ "$(${field('pid')})" = ${appPid} ] && core=$(${field('corePid')}); sleep 2; done; ` +
-        `[ -n "$core" ] && ps -p "$core" -o args= 2>/dev/null | grep -q ${this.quote(this.binaryName)} || exit 0; ` +
-        `kill -INT "$core" 2>/dev/null || exit 0; ` +
-        `i=0; while [ $i -lt 25 ]; do kill -0 "$core" 2>/dev/null || exit 0; sleep 0.2; i=$((i+1)); done; ` +
-        `kill -KILL "$core" 2>/dev/null; true`,
-      { background: true },
-    );
+    // The script is passed inline (sh -c), with "watch-app" as $0 and the rest as $1..$3.
+    const args = [String(appPid), lockPath, this.binaryName].map((arg) => this.quote(arg)).join(' ');
+    await os.execCommand(`sh -c ${this.quote(WATCH_APP_SCRIPT)} watch-app ${args}`, { background: true });
   }
 
   async processImageName(pid: number): Promise<string | null> {
