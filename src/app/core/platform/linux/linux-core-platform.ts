@@ -1,19 +1,9 @@
 import { PlatformId, TunPrivilegeResult } from '../core-platform';
 import { PosixCorePlatform } from '../posix/posix-core-platform';
+import { launchTerminal } from './linux-terminals';
 
 /** Capabilities sing-box needs for a TUN inbound with auto_route (see sing-box docs, Linux). */
 const TUN_CAPABILITIES = 'cap_net_admin,cap_net_raw,cap_net_bind_service+ep';
-
-/** Terminal emulators tried in order; `{cmd}` is replaced by the quoted shell command. */
-const TERMINALS = [
-  'x-terminal-emulator -e sh -c {cmd}',
-  'gnome-terminal -- sh -c {cmd}',
-  'konsole -e sh -c {cmd}',
-  'xfce4-terminal -x sh -c {cmd}',
-  'kitty sh -c {cmd}',
-  'alacritty -e sh -c {cmd}',
-  'xterm -e sh -c {cmd}',
-];
 
 export class LinuxCorePlatform extends PosixCorePlatform {
   readonly id: PlatformId = 'linux';
@@ -64,13 +54,6 @@ export class LinuxCorePlatform extends PosixCorePlatform {
 
   async openTerminal(command: string, title: string): Promise<void> {
     const shellCommand = this.quote(`printf '\\033]0;%s\\007' ${this.quote(title)}; ${command}; echo; printf 'Press Enter to close'; read _`);
-    for (const template of TERMINALS) {
-      const program = template.split(' ')[0];
-      if ((await this.exec(`command -v ${program}`)).exitCode !== 0) continue;
-      const launch = template.replace('{cmd}', shellCommand);
-      const result = await this.exec(`nohup ${launch} >/dev/null 2>&1 &`);
-      if (result.exitCode === 0) return;
-    }
-    throw new Error('No terminal emulator found (tried x-terminal-emulator, gnome-terminal, konsole, xfce4-terminal, kitty, alacritty, xterm)');
+    await launchTerminal((cmd) => this.exec(cmd), shellCommand);
   }
 }
