@@ -67,6 +67,18 @@ export class InstanceService {
     this.watcherId = await filesystem.createWatcher(dir);
   }
 
+  /**
+   * Appends to instance/events.log, which the watchdog (watch-app.ps1) also writes to: how and
+   * why this copy quit, which the in-memory log cannot tell once the app is gone.
+   */
+  async logEvent(message: string): Promise<void> {
+    // Local time, like the watchdog's lines (PowerShell's Get-Date -Format s).
+    const now = new Date();
+    const local = new Date(now.getTime() - now.getTimezoneOffset() * 60_000).toISOString().slice(0, 19);
+    const line = `${local} [app ${NL_PID}] ${message}\n`;
+    await filesystem.appendFile(await this.native.path(DIR, 'events.log'), line).catch(() => undefined);
+  }
+
   /** The lock file, which also records the running sing-box PID. */
   lockPath(): Promise<string> {
     return this.native.path(DIR, LOCK_FILE);

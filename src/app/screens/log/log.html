@@ -39,18 +39,23 @@
     }
   </mat-form-field>
 
-  <div class="viewport mono" #viewport (scroll)="onScroll()">
-    @for (entry of visible(); track entry.id) {
-      <div class="line" [attr.data-level]="entry.level">
+  @if (visible().length) {
+    <cdk-virtual-scroll-viewport class="viewport mono" [itemSize]="lineHeight" (scroll)="onScroll()">
+      <div
+        *cdkVirtualFor="let entry of visible(); trackBy: trackById"
+        class="line"
+        [attr.data-level]="entry.level"
+        [title]="entry.message"
+      >
         <span class="lvl">{{ entry.level.toUpperCase() }}</span>
         <span class="msg">{{ entry.message }}</span>
       </div>
-    } @empty {
-      <div class="empty muted">
-        {{ box.status() === 'stopped' ? 'Service is not running.' : 'No logs yet.' }}
-      </div>
-    }
-  </div>
+    </cdk-virtual-scroll-viewport>
+  } @else {
+    <div class="viewport empty muted">
+      {{ box.status() === 'stopped' ? 'Service is not running.' : 'No logs yet.' }}
+    </div>
+  }
 
   @if (!followTail()) {
     <button mat-mini-fab class="to-bottom" (click)="scrollToBottom()" matTooltip="Scroll to bottom">

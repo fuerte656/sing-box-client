@@ -9,11 +9,14 @@ public static class SingBoxClientConsole {
   [DllImport("kernel32.dll")] static extern bool GenerateConsoleCtrlEvent(uint ctrlEvent, uint groupId);
   static readonly Handler Ignore = t => true;
 
+  // Sends CTRL_BREAK to the process group led by pid (sing-box is started as a group leader,
+  // see WindowsCorePlatform.coreCommand), never to the whole console: the console can be shared
+  // with the app itself, which would exit on the event too.
   public static int Interrupt(uint pid) {
     FreeConsole();
     if (!AttachConsole(pid)) return 1;
     SetConsoleCtrlHandler(Ignore, true);
-    bool sent = GenerateConsoleCtrlEvent(1, 0);
+    bool sent = GenerateConsoleCtrlEvent(1, pid);
     System.Threading.Thread.Sleep(200);
     FreeConsole();
     return sent ? 0 : 2;

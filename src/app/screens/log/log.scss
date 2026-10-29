@@ -18,20 +18,36 @@
 
 .viewport {
   flex: 1;
-  overflow: auto;
+  min-height: 0;
   border: 1px solid var(--mat-sys-outline-variant);
   border-radius: 12px;
-  padding: 8px 12px;
   font-size: 12px;
   line-height: 18px;
   background: var(--mat-sys-surface-container-lowest);
 }
 
+// Fixed height to match the viewport's itemSize (log.ts lineHeight); the full text is in the tooltip.
 .line {
   display: flex;
+  align-items: center;
   gap: 8px;
+  height: 56px;
+  max-width: 100%;
+  padding: 0 12px;
+  box-sizing: border-box;
+}
+
+// At most two lines, cut off with "…"; long unbroken tokens (hosts, IDs) wrap instead of overflowing.
+.msg {
+  flex: 1;
+  min-width: 0;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  overflow: hidden;
   white-space: pre-wrap;
-  word-break: break-word;
+  overflow-wrap: anywhere;
 }
 
 .lvl {
@@ -60,6 +76,7 @@
 }
 
 .empty {
+  box-sizing: border-box;
   padding: 24px;
   text-align: center;
   font-family: Roboto, sans-serif;

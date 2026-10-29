@@ -34,7 +34,8 @@ export class AppLifecycleService {
     // The window starts hidden (neutralino.config.json) so "start minimized" does not flash it.
     try {
       // Only one copy runs: a running instance is asked to quit (it stops sing-box first).
-      await this.instance.claim(() => this.quit());
+      await this.instance.claim(() => this.quit('another copy took over'));
+      void this.instance.logEvent('started');
       // Stops sing-box if this copy dies, and kills this copy if its UI is lost (Quit cannot work then).
       void this.platform
         .watchApp(NL_PID, NL_PORT, await this.instance.lockPath())
@@ -44,7 +45,7 @@ export class AppLifecycleService {
       await this.core.refresh();
 
       await events.on('windowClose', () => void this.onWindowClose());
-      await this.tray.start(() => this.quit());
+      await this.tray.start(() => this.quit('tray Quit'));
       this.taildrop.start();
 
       if (this.settings.get('autoStart') && this.core.version() && this.profiles.selected()) {
@@ -57,11 +58,15 @@ export class AppLifecycleService {
     }
   }
 
-  /** Stops sing-box cleanly and exits; force-quits if that hangs or Quit is chosen again. */
-  async quit(): Promise<void> {
-    if (this.quitting) return this.forceQuit();
+  /**
+   * Stops sing-box cleanly and exits; force-quits if that hangs or Quit is chosen again.
+   * `reason` goes to the events log.
+   */
+  async quit(reason: string): Promise<void> {
+    if (this.quitting) return this.forceQuit(`${reason} while quitting`);
     this.quitting = true;
-    setTimeout(() => void this.forceQuit(), QUIT_TIMEOUT);
+    await this.instance.logEvent(`quit: ${reason}`);
+    setTimeout(() => void this.forceQuit('quit timed out'), QUIT_TIMEOUT);
     await this.window.saveBounds().catch(() => undefined);
     await this.box.stop();
     await this.settings.flush();
@@ -73,7 +78,8 @@ export class AppLifecycleService {
    * Kills sing-box, then this process (app.exit() itself may be what hangs). The next launch
    * cleans up the stale instance lock.
    */
-  private async forceQuit(): Promise<void> {
+  private async forceQuit(reason: string): Promise<void> {
+    await this.instance.logEvent(`force quit: ${reason}`);
     await this.box.kill();
     await this.platform.forceKill(NL_PID);
   }
@@ -82,7 +88,7 @@ export class AppLifecycleService {
     if (this.settings.get('closeToTray')) {
       await this.window.hide();
     } else {
-      await this.quit();
+      await this.quit('window closed');
     }
   }
 }

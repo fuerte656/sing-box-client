@@ -14,13 +14,15 @@ mat-card-header {
 .list {
   display: flex;
   flex-direction: column;
+  gap: 2px;
 }
 
+// The radio brings its own padding on the left; the right keeps the actions off the hover edge.
 .row {
   display: flex;
   align-items: center;
   gap: 4px;
-  padding: 2px 0;
+  padding: 2px 4px 2px 0;
   border-radius: 12px;
   cursor: pointer;
 

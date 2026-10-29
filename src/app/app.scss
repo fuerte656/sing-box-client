@@ -8,6 +8,15 @@
   background: var(--mat-sys-surface-container-low);
 }
 
+// Keep the item highlight off the rail's edges and apart from its neighbours.
+.rail mat-nav-list {
+  padding: 4px 12px;
+
+  a[mat-list-item] + a[mat-list-item] {
+    margin-top: 4px;
+  }
+}
+
 .brand {
   display: flex;
   align-items: center;

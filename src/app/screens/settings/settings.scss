@@ -24,11 +24,14 @@ mat-card-content {
   padding-top: 8px;
 }
 
+// Vertical padding keeps 56px fields and buttons off the dividers between rows.
 .row {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 12px;
   min-height: 56px;
+  padding: 8px 0;
+  box-sizing: border-box;
   border-top: 1px solid var(--mat-sys-outline-variant);
 
   &:first-child {

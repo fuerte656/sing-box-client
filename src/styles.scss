@@ -41,11 +41,14 @@ body {
   box-sizing: border-box;
 }
 
+// Vertical padding keeps header controls (outlined fields are 56px tall) off the content below.
 .page-header {
   display: flex;
   align-items: center;
   gap: 8px;
   min-height: 64px;
+  padding: 8px 0 12px;
+  box-sizing: border-box;
 
   h1 {
     font: var(--mat-sys-title-large);

@@ -55,32 +55,35 @@
       </span>
     </div>
   } @else {
-    <div class="list">
-      @for (c of visible(); track c.id) {
-        <a class="row" [class.closed]="c.closedAt" [routerLink]="['/connections', c.id]">
-          <div class="main">
-            <span class="target">{{ target(c) }}</span>
-            <span class="meta muted">
-              {{ c.metadata.network }} · {{ c.metadata.type }}
-              @if (processName(c)) {
-                · {{ processName(c) }}
-              }
-              · {{ c.chains.slice().reverse().join(' → ') }}
-            </span>
-          </div>
-          <div class="traffic">
-            @if (!c.closedAt) {
-              <span>↑ {{ c.uploadSpeed | speed }} ↓ {{ c.downloadSpeed | speed }}</span>
+    <cdk-virtual-scroll-viewport class="list" [itemSize]="rowHeight">
+      <a
+        *cdkVirtualFor="let c of visible(); trackBy: trackById"
+        class="row"
+        [class.closed]="c.closedAt"
+        [routerLink]="['/connections', c.id]"
+      >
+        <div class="main">
+          <span class="target">{{ target(c) }}</span>
+          <span class="meta muted">
+            {{ c.metadata.network }} · {{ c.metadata.type }}
+            @if (processName(c)) {
+              · {{ processName(c) }}
             }
-            <span class="muted">↑ {{ c.upload | bytes }} ↓ {{ c.download | bytes }}</span>
-          </div>
+            · {{ c.chains.slice().reverse().join(' → ') }}
+          </span>
+        </div>
+        <div class="traffic">
           @if (!c.closedAt) {
-            <button mat-icon-button (click)="close(c, $event)" matTooltip="Close">
-              <mat-icon>close</mat-icon>
-            </button>
+            <span>↑ {{ c.uploadSpeed | speed }} ↓ {{ c.downloadSpeed | speed }}</span>
           }
-        </a>
-      }
-    </div>
+          <span class="muted">↑ {{ c.upload | bytes }} ↓ {{ c.download | bytes }}</span>
+        </div>
+        @if (!c.closedAt) {
+          <button mat-icon-button (click)="close(c, $event)" matTooltip="Close">
+            <mat-icon>close</mat-icon>
+          </button>
+        }
+      </a>
+    </cdk-virtual-scroll-viewport>
   }
 </div>

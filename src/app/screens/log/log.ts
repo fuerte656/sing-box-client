@@ -1,4 +1,5 @@
-import { Component, ElementRef, afterRenderEffect, computed, inject, signal, viewChild } from '@angular/core';
+import { CdkVirtualScrollViewport, ScrollingModule } from '@angular/cdk/scrolling';
+import { Component, afterRenderEffect, computed, inject, signal, viewChild } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatFormFieldModule } from '@angular/material/form-field';
@@ -22,6 +23,7 @@ const viewState = {
   selector: 'app-log',
   imports: [
     FormsModule,
+    ScrollingModule,
     MatButtonModule,
     MatFormFieldModule,
     MatIconModule,
@@ -47,7 +49,10 @@ export class Log {
   private readonly snapshot = signal<LogEntry[]>([]);
   readonly followTail = signal(true);
 
-  private readonly viewport = viewChild.required<ElementRef<HTMLElement>>('viewport');
+  private readonly viewport = viewChild(CdkVirtualScrollViewport);
+  /** Line height in px (log.scss .line), for the virtual scroll viewport. */
+  readonly lineHeight = 56;
+  readonly trackById = (_: number, e: LogEntry) => e.id;
 
   readonly visible = computed(() => {
     const source = this.paused() ? this.snapshot() : this.logs.entries();
@@ -61,22 +66,23 @@ export class Log {
   constructor() {
     afterRenderEffect(() => {
       this.visible();
-      if (this.followTail()) {
-        const el = this.viewport().nativeElement;
-        el.scrollTop = el.scrollHeight;
-      }
+      if (this.followTail()) this.toBottom();
     });
   }
 
   onScroll(): void {
-    const el = this.viewport().nativeElement;
-    this.followTail.set(el.scrollHeight - el.scrollTop - el.clientHeight < 24);
+    const viewport = this.viewport();
+    if (viewport) this.followTail.set(viewport.measureScrollOffset('bottom') < 24);
   }
 
   scrollToBottom(): void {
     this.followTail.set(true);
-    const el = this.viewport().nativeElement;
-    el.scrollTop = el.scrollHeight;
+    this.toBottom();
+  }
+
+  /** On the next frame: the viewport resizes its scroll area for new entries only after rendering. */
+  private toBottom(): void {
+    requestAnimationFrame(() => this.viewport()?.scrollTo({ bottom: 0 }));
   }
 
   togglePause(): void {

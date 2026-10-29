@@ -8,12 +8,22 @@ import WATCH_APP_SCRIPT from './scripts/watch-app.ps1';
 /** PowerShell single-quoted (literal) string. */
 const psQuote = (s: string) => `'${s.replace(/'/g, "''")}'`;
 
+/** cmd.exe's limit for a whole command line; Neutralino runs every command through cmd /c. */
+const MAX_COMMAND_LENGTH = 8191;
+
 /**
- * A script as PowerShell's -EncodedCommand expects it: UTF-16LE, base64. Comment lines are
- * dropped first, since cmd.exe limits the whole command line to 8191 characters.
+ * The C# helper on one line: it is passed inside the encoded command, which has to stay short.
+ * Line comments go first, or on one line they would swallow the rest of the source.
+ */
+const CONSOLE_SOURCE_MIN = CONSOLE_SOURCE.replace(/\/\/.*$/gm, '').replace(/\s+/g, ' ').trim();
+
+/**
+ * A script as PowerShell's -EncodedCommand expects it: UTF-16LE, base64 (so about 2.7 characters
+ * per source character). Comment lines and indentation are dropped first, to stay under
+ * MAX_COMMAND_LENGTH.
  */
 function encodeCommand(script: string): string {
-  const body = script.replace(/^[ \t]*#.*(\r?\n|$)/gm, '');
+  const body = script.replace(/^[ \t]*#.*(\r?\n|$)/gm, '').replace(/^[ \t]+/gm, '');
   let binary = '';
   for (let i = 0; i < body.length; i++) {
     const code = body.charCodeAt(i);
@@ -75,10 +85,20 @@ export class WindowsCorePlatform extends CorePlatform {
     return Number.isFinite(pid) ? pid : spawnedPid;
   }
 
+  /**
+   * `start /B /WAIT` runs sing-box as the leader of its own process group, in the same console
+   * and with the same output pipes, and the shell still exits with it. stopGracefully can then
+   * signal that group alone: the console is shared with the app whenever the app was started
+   * from one (a terminal, or the elevated relaunch), and a console-wide CTRL_BREAK quits the app too.
+   */
+  override coreCommand(commandLine: string): string {
+    return `start "sing-box" /B /WAIT ${commandLine}`;
+  }
+
   async stopGracefully(pid: number, timeoutMs: number): Promise<boolean> {
     const result = await this.powershell(
       INTERRUPT_SCRIPT,
-      `-TargetPid ${pid} -TimeoutMs ${timeoutMs} -ConsoleSource ${psQuote(CONSOLE_SOURCE)}`,
+      `-TargetPid ${pid} -TimeoutMs ${timeoutMs} -ConsoleSource ${psQuote(CONSOLE_SOURCE_MIN)}`,
     );
     return result.exitCode === 0;
   }
@@ -91,7 +111,7 @@ export class WindowsCorePlatform extends CorePlatform {
     await this.powershell(
       WATCH_APP_SCRIPT,
       `-AppPid ${appPid} -AppPort ${appPort ?? 0} -LockPath ${psQuote(this.nativePath(lockPath))} ` +
-        `-ConsoleSource ${psQuote(CONSOLE_SOURCE)}`,
+        `-ConsoleSource ${psQuote(CONSOLE_SOURCE_MIN)}`,
       true,
     );
   }
@@ -180,9 +200,11 @@ export class WindowsCorePlatform extends CorePlatform {
   /** Runs a script via -EncodedCommand (UTF-16LE base64) so no quoting or temp files are needed. */
   private powershell(script: string, args = '', background = false): Promise<ExecResult> {
     const body = args ? `& {${script}} ${args}` : script;
-    return this.exec(
-      `powershell -NoProfile -NonInteractive -ExecutionPolicy Bypass -EncodedCommand ${encodeCommand(body)}`,
-      background,
-    );
+    const command = `powershell -NoProfile -NonInteractive -ExecutionPolicy Bypass -EncodedCommand ${encodeCommand(body)}`;
+    // Past the limit cmd.exe fails without running anything, which looks like the script did nothing.
+    if (command.length > MAX_COMMAND_LENGTH) {
+      return Promise.reject(new Error(`PowerShell command too long (${command.length} > ${MAX_COMMAND_LENGTH})`));
+    }
+    return this.exec(command, background);
   }
 }

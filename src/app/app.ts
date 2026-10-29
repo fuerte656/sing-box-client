@@ -121,7 +121,9 @@ export class App {
       case 'needElevation':
         if (await this.dialogs.confirm({ title, message, confirm: this.platform.tunPrivilegeAction })) {
           try {
-            if ((await this.box.acquireTunPrivileges()) === 'relaunch') await this.lifecycle.quit();
+            if ((await this.box.acquireTunPrivileges()) === 'relaunch') {
+              await this.lifecycle.quit('relaunched as administrator');
+            }
           } catch (e) {
             await this.dialogs.error('Could not get TUN permission', e);
           }

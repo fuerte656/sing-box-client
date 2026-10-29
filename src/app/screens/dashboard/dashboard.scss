@@ -8,14 +8,21 @@
   padding-bottom: 96px;
 }
 
+// Cards wrap at 220px and grow to share each row, so every row (the last one too) spans the
+// full width with no space left over.
 .grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  display: flex;
+  flex-wrap: wrap;
   gap: 16px;
+
+  > * {
+    flex: 1 1 220px;
+    min-width: 0;
+  }
 }
 
 .wide {
-  grid-column: 1 / -1;
+  flex-basis: 100%;
 }
 
 .stat-label {

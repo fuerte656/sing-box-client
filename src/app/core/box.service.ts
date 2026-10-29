@@ -162,7 +162,7 @@ export class BoxService {
       this.clash.resetHistory();
       this.logs.system(`Starting profile "${profile.name}" with sing-box ${this.core.version()}`);
       const p = this.platform;
-      const command = [
+      const commandLine = [
         p.quote(p.nativePath(await this.core.binary())),
         'run',
         '-c',
@@ -171,7 +171,7 @@ export class BoxService {
         p.quote(p.nativePath(workDir)),
         '--disable-color',
       ].join(' ');
-      this.process = await this.native.spawn(command, workDir);
+      this.process = await this.native.spawn(p.coreCommand(commandLine), workDir);
 
       if (!(await this.waitUntilReady(endpoint))) {
         if (this.process) {
@@ -290,7 +290,9 @@ export class BoxService {
     if (!proc) return;
     const corePid = this.corePid ?? (await this.platform.resolveCorePid(proc.pid).catch(() => proc.pid));
     const exited = this.waitForExit(STOP_TIMEOUT + 2000);
+    void this.instance.logEvent(`stop: sing-box ${corePid} (shell ${proc.pid})`);
     const stopped = await this.platform.stopGracefully(corePid, STOP_TIMEOUT).catch(() => false);
+    void this.instance.logEvent(`stop: graceful ${stopped ? 'ok' : 'failed'}`);
     if (!stopped) {
       this.logs.system('sing-box did not stop gracefully, killing it', 'warn');
       await this.platform.forceKill(corePid).catch(() => undefined);

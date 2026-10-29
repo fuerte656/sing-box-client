@@ -1,3 +1,4 @@
+import { ScrollingModule } from '@angular/cdk/scrolling';
 import { Component, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
@@ -33,6 +34,7 @@ export function connectionTarget(c: Connection): string {
   imports: [
     FormsModule,
     RouterLink,
+    ScrollingModule,
     MatButtonModule,
     MatButtonToggleModule,
     MatFormFieldModule,
@@ -55,6 +57,9 @@ export class Connections {
   readonly sort = viewState.sort;
   readonly query = viewState.query;
   readonly target = connectionTarget;
+  /** Row height in px (connections.scss .row), for the virtual scroll viewport. */
+  readonly rowHeight = 57;
+  readonly trackById = (_: number, c: Connection) => c.id;
 
   readonly visible = computed(() => {
     const state = this.state();

@@ -25,30 +25,37 @@ import { stateLabel } from './tailscale/tailscale-utils';
           <span>Tools need sing-box 1.14 or newer (installed: {{ core.version() }}). Update it in Settings → Core.</span>
         </div>
       } @else {
-        <h2 class="section-title">Endpoints</h2>
-        @if (daemon.tailscale().length) {
-          <mat-nav-list class="group">
-            @for (endpoint of daemon.tailscale(); track endpoint.endpointTag) {
-              <a mat-list-item [routerLink]="['/tools/tailscale', endpoint.endpointTag]">
-                <mat-icon matListItemIcon>hub</mat-icon>
-                <span matListItemTitle>Tailscale</span>
-                <span matListItemLine class="muted">
-                  {{ multiple() ? endpoint.endpointTag + ' · ' : '' }}{{ label(endpoint) }}
-                </span>
-              </a>
-            }
-          </mat-nav-list>
-        } @else {
-          <p class="muted">This profile has no Tailscale endpoints.</p>
-        }
+        <div class="content">
+          <h2 class="section-title">Endpoints</h2>
+          @if (daemon.tailscale().length) {
+            <mat-nav-list class="group">
+              @for (endpoint of daemon.tailscale(); track endpoint.endpointTag) {
+                <a mat-list-item [routerLink]="['/tools/tailscale', endpoint.endpointTag]">
+                  <mat-icon matListItemIcon>hub</mat-icon>
+                  <span matListItemTitle>Tailscale</span>
+                  <span matListItemLine class="muted">
+                    {{ multiple() ? endpoint.endpointTag + ' · ' : '' }}{{ label(endpoint) }}
+                  </span>
+                </a>
+              }
+            </mat-nav-list>
+          } @else {
+            <p class="muted">This profile has no Tailscale endpoints.</p>
+          }
+        </div>
       }
     </div>
   `,
   styles: `
     :host { display: contents; }
     .page { overflow-y: auto; }
-    .group {
+    /* Centered column; the section title stays aligned with the list. */
+    .content {
+      width: 100%;
       max-width: 720px;
+      margin: 0 auto;
+    }
+    .group {
       border-radius: 16px;
       background: var(--mat-sys-surface-container);
       padding: 4px 0;

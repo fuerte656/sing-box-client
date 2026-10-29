@@ -52,6 +52,11 @@ export abstract class CorePlatform {
    */
   abstract resolveCorePid(spawnedPid: number): Promise<number>;
 
+  /** The shell command that starts sing-box, from its quoted command line; unchanged by default. */
+  coreCommand(commandLine: string): string {
+    return commandLine;
+  }
+
   /**
    * Asks sing-box to shut down cleanly so it can undo system proxy / routes.
    * Resolves true once the process has exited within the timeout.
