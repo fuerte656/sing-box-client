@@ -51,6 +51,8 @@ export interface AppSettings {
   logMaxLines: number;
   dashboardCards: DashboardCard[];
   windowBounds: WindowBounds | null;
+  /** Names of Tailscale exit nodes by stable ID, to show the saved one while sing-box is stopped. */
+  tailscalePeerNames: Record<string, string>;
 }
 
 /** Application settings, persisted to <data>/settings.json. */
@@ -73,6 +75,7 @@ export class SettingsService extends BaseSettings<AppSettings> {
     logMaxLines: 3000,
     dashboardCards: ALL_DASHBOARD_CARDS,
     windowBounds: null,
+    tailscalePeerNames: {},
   };
 
   constructor() {

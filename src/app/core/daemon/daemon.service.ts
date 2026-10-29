@@ -3,6 +3,7 @@ import { CoreBinaryService } from '../core-binary.service';
 import { NativeService } from '../native.service';
 import { CorePlatform } from '../platform/core-platform';
 import { DaemonClient, GrpcStatus, GrpcWebError } from './grpc-web';
+import { TailscaleStateService } from './tailscale-state.service';
 import { downloadTaildropFile as downloadToFile } from './taildrop-download';
 import {
   TaildropInbox,
@@ -26,6 +27,7 @@ export class DaemonService {
   private readonly nativeService: NativeService = inject(NativeService);
   private readonly platform: CorePlatform = inject(CorePlatform);
   private readonly coreBinaryService: CoreBinaryService = inject(CoreBinaryService);
+  private readonly tailscaleStateService: TailscaleStateService = inject(TailscaleStateService);
 
   private client: DaemonClient | null = null;
   private endpoint: DaemonEndpoint | null = null;
@@ -156,7 +158,10 @@ export class DaemonService {
         await this.client.stream<{ endpoints: TailscaleEndpointStatus[] }>(
           'SubscribeTailscaleStatus',
           {},
-          (update) => this.tailscale.set(update.endpoints),
+          (update) => {
+            this.tailscale.set(update.endpoints);
+            this.tailscaleStateService.rememberPeerNames(update.endpoints);
+          },
           signal,
         );
       } catch (e) {
